@@ -19,6 +19,7 @@ export default function App() {
   const [maxAltitude, setMaxAltitude] = useState(1500);
   const [mode, setMode] = useState<DisplayMode>("below");
   const [flyTo, setFlyTo] = useState<Place | null>(null);
+  const [franceOnly, setFranceOnly] = useState(true);
   const [selectedDeps, setSelectedDeps] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState<Progress>(null);
@@ -34,13 +35,13 @@ export default function App() {
     return m;
   }, [sectors]);
 
-  const filteredSectors = useMemo(
-    () =>
-      selectedDeps.length === 0
-        ? sectors
-        : sectors.filter((s) => s.dep != null && selectedDeps.includes(s.dep)),
-    [sectors, selectedDeps],
-  );
+  const filteredSectors = useMemo(() => {
+    let list = sectors;
+    if (franceOnly) list = list.filter((s) => s.dep != null);
+    if (selectedDeps.length > 0)
+      list = list.filter((s) => s.dep != null && selectedDeps.includes(s.dep));
+    return list;
+  }, [sectors, franceOnly, selectedDeps]);
 
   const aboveCount = useMemo(
     () => filteredSectors.reduce((n, s) => (s.elevation > maxAltitude ? n + 1 : n), 0),
@@ -94,10 +95,6 @@ export default function App() {
       });
   }, []);
 
-  const handleSelect = useCallback((sector: Sector) => {
-    window.open(sector.url, "_blank", "noopener,noreferrer");
-  }, []);
-
   if (!hasMapKey) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-950 p-6 text-center text-white">
@@ -125,10 +122,11 @@ export default function App() {
         maxAltitude={maxAltitude}
         mode={mode}
         flyTo={flyTo}
-        onSelect={handleSelect}
       />
       <FilterPanel
         onCitySelect={setFlyTo}
+        franceOnly={franceOnly}
+        onFranceOnlyChange={setFranceOnly}
         selectedDeps={selectedDeps}
         onDepsChange={setSelectedDeps}
         depCounts={depCounts}

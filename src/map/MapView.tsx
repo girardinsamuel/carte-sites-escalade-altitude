@@ -21,14 +21,14 @@ interface Props {
   maxAltitude: number;
   mode: DisplayMode;
   flyTo: Place | null;
-  onSelect: (sector: Sector) => void;
 }
 
-type Hover = { sector: Sector; x: number; y: number };
+type Marker = { sector: Sector; x: number; y: number };
 
-export function MapView({ sectors, maxAltitude, mode, flyTo, onSelect }: Props) {
+export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
   const { details, request } = useSectorDetails();
-  const [hover, setHover] = useState<Hover | null>(null);
+  const [hover, setHover] = useState<Marker | null>(null);
+  const [pinned, setPinned] = useState<Marker | null>(null);
   const mapRef = useRef<MapRef>(null);
 
   useEffect(() => {
@@ -55,12 +55,28 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, onSelect }: Props) 
     [request],
   );
 
+  // Le clic sur un secteur épingle l'infobulle (avec le lien vers la fiche
+  // camptocamp) au lieu d'ouvrir la fiche directement.
+  const handleClick = useCallback(
+    (info: PickingInfo<Sector>) => {
+      if (info.object) {
+        setPinned({ sector: info.object, x: info.x, y: info.y });
+        request(info.object.id);
+      } else {
+        setPinned(null);
+      }
+    },
+    [request],
+  );
+
   const layers = useMemo(
     () => [
-      sectorLayer({ sectors, maxAltitude, mode, onClick: onSelect, onHover: handleHover }),
+      sectorLayer({ sectors, maxAltitude, mode, onClick: handleClick, onHover: handleHover }),
     ],
-    [sectors, maxAltitude, mode, onSelect, handleHover],
+    [sectors, maxAltitude, mode, handleClick, handleHover],
   );
+
+  const active = pinned ?? hover;
 
   return (
     <div className="absolute inset-0" onPointerLeave={() => setHover(null)}>
@@ -74,6 +90,7 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, onSelect }: Props) 
           bearing: 0,
         }}
         maxPitch={80}
+        onMoveStart={() => setPinned(null)}
         attributionControl={false}
         mapStyle={MAP_STYLE}
         terrain={{ source: "terrain-dem", exaggeration: 1.35 }}
@@ -83,12 +100,14 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, onSelect }: Props) 
         <NavigationControl position="bottom-left" visualizePitch />
         <DeckOverlay interleaved layers={layers} />
       </Map>
-      {hover && (
+      {active && (
         <SectorTooltip
-          sector={hover.sector}
-          detail={details.get(hover.sector.id)}
-          x={hover.x}
-          y={hover.y}
+          sector={active.sector}
+          detail={details.get(active.sector.id)}
+          x={active.x}
+          y={active.y}
+          pinned={Boolean(pinned)}
+          onClose={() => setPinned(null)}
         />
       )}
       <CreditsWidget />

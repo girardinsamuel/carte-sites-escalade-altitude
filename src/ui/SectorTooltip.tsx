@@ -7,6 +7,9 @@ interface Props {
   detail: DetailEntry | undefined;
   x: number;
   y: number;
+  /** Épinglée après un clic : l'infobulle devient interactive (lien cliquable). */
+  pinned?: boolean;
+  onClose?: () => void;
 }
 
 function DetailBody({ detail }: { detail: DetailEntry | undefined }) {
@@ -45,15 +48,46 @@ function DetailBody({ detail }: { detail: DetailEntry | undefined }) {
   );
 }
 
-export function SectorTooltip({ sector, detail, x, y }: Props) {
+export function SectorTooltip({ sector, detail, x, y, pinned = false, onClose }: Props) {
   return (
     <div
-      className="pointer-events-none absolute z-30 max-w-[15rem] -translate-y-full rounded-lg bg-slate-900/95 px-2.5 py-2 text-xs leading-snug text-white shadow-xl ring-1 ring-white/10"
+      className={`absolute z-30 max-w-60 -translate-y-full rounded-lg bg-slate-900/95 px-2.5 py-2 text-xs leading-snug text-white shadow-xl ring-1 ring-white/10 ${
+        pinned ? "pointer-events-auto" : "pointer-events-none"
+      }`}
       style={{ left: x + 14, top: y - 6 }}
     >
-      <div className="font-semibold">{sector.name}</div>
+      {pinned && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer"
+          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded text-white/50 transition hover:bg-white/10 hover:text-white"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      )}
+      <div className={`font-semibold ${pinned ? "pr-5" : ""}`}>{sector.name}</div>
       <div className="text-white/55">{Math.round(sector.elevation)} m</div>
       <DetailBody detail={detail} />
+      <a
+        href={sector.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1.5 inline-block font-medium text-sky-300 underline decoration-sky-300/40 underline-offset-2 hover:text-sky-200"
+      >
+        Fiche camptocamp ↗
+      </a>
     </div>
   );
 }

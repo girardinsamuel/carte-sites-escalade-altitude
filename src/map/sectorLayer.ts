@@ -21,7 +21,7 @@ interface Options {
   /** Altitude limite choisie au curseur. */
   maxAltitude: number;
   mode: DisplayMode;
-  onClick: (sector: Sector) => void;
+  onClick: (info: PickingInfo<Sector>) => void;
   onHover: (info: PickingInfo<Sector>) => void;
 }
 
@@ -53,9 +53,7 @@ export function sectorLayer({ sectors, maxAltitude, mode, onClick, onHover }: Op
     pickable: true,
     autoHighlight: true,
     highlightColor: [255, 255, 255, 120],
-    onClick: (info: PickingInfo<Sector>) => {
-      if (info.object) onClick(info.object);
-    },
+    onClick,
     onHover,
     getFilterValue: (d) => d.elevation,
     filterRange,

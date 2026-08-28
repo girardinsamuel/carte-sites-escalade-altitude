@@ -9,6 +9,8 @@ import { Legend } from "./Legend";
 
 interface Props {
   onCitySelect: (place: Place) => void;
+  franceOnly: boolean;
+  onFranceOnlyChange: (v: boolean) => void;
   selectedDeps: string[];
   onDepsChange: (codes: string[]) => void;
   depCounts: Map<string, number>;
@@ -34,6 +36,8 @@ interface Props {
 
 export function FilterPanel({
   onCitySelect,
+  franceOnly,
+  onFranceOnlyChange,
   selectedDeps,
   onDepsChange,
   depCounts,
@@ -99,11 +103,23 @@ export function FilterPanel({
 
         <div className="my-4 h-px bg-white/10" />
 
-        <DepartementFilter
-          selected={selectedDeps}
-          counts={depCounts}
-          onChange={onDepsChange}
-        />
+        <label className="flex items-center gap-2 text-xs font-medium text-white/80">
+          <input
+            type="checkbox"
+            checked={franceOnly}
+            onChange={(e) => onFranceOnlyChange(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-sky-500"
+          />
+          Sites en France
+        </label>
+
+        <div className="mt-3">
+          <DepartementFilter
+            selected={selectedDeps}
+            counts={depCounts}
+            onChange={onDepsChange}
+          />
+        </div>
 
         <div className="my-4 h-px bg-white/10" />
 
