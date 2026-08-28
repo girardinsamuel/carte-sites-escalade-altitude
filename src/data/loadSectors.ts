@@ -1,0 +1,36 @@
+import type { LoadProgress, Sector } from "./types";
+import { fetchClimbingWaypoints } from "./c2c";
+
+interface SectorFeatureCollection {
+  features: {
+    geometry: { coordinates: [number, number] };
+    properties: { id: number; name: string; elevation: number; url: string };
+  }[];
+}
+
+/** Charge le snapshot GeoJSON statique généré par `npm run data`. */
+export async function loadLocal(): Promise<Sector[]> {
+  const res = await fetch(`${import.meta.env.BASE_URL}data/sectors.geojson`);
+  if (!res.ok) {
+    throw new Error(
+      `sectors.geojson introuvable (HTTP ${res.status}). Lancez d'abord \`npm run data\`.`,
+    );
+  }
+  const fc = (await res.json()) as SectorFeatureCollection;
+  return fc.features.map((f) => ({
+    id: f.properties.id,
+    name: f.properties.name,
+    elevation: f.properties.elevation,
+    lon: f.geometry.coordinates[0],
+    lat: f.geometry.coordinates[1],
+    url: f.properties.url,
+  }));
+}
+
+/** Rafraîchit les données en direct depuis l'API camptocamp. */
+export async function refreshFromApi(
+  onProgress?: LoadProgress,
+  signal?: AbortSignal,
+): Promise<Sector[]> {
+  return fetchClimbingWaypoints({ signal, onProgress });
+}

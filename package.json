@@ -1,0 +1,37 @@
+{
+  "name": "cartes-escalade",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "data": "node scripts/fetch-sectors.mjs"
+  },
+  "dependencies": {
+    "@deck.gl/core": "^9.0.38",
+    "@deck.gl/extensions": "^9.0.38",
+    "@deck.gl/layers": "^9.0.38",
+    "@deck.gl/mapbox": "^9.0.38",
+    "@deck.gl/react": "^9.0.38",
+    "@radix-ui/react-slider": "^1.2.3",
+    "maplibre-gl": "^4.7.1",
+    "proj4": "^2.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-map-gl": "^7.1.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/proj4": "^2.5.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3"
+  }
+}
