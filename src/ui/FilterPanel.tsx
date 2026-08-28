@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { DisplayMode } from "../data/types";
 import type { Place } from "../data/geocode";
 import { AltitudeSlider } from "./AltitudeSlider";
@@ -6,6 +6,22 @@ import { CitySearch } from "./CitySearch";
 import { DepartementFilter } from "./DepartementFilter";
 import { ModeToggle } from "./ModeToggle";
 import { Legend } from "./Legend";
+
+const BADGE = {
+  sky: "bg-sky-500/20 text-sky-100 ring-sky-400/30",
+  emerald: "bg-emerald-500/20 text-emerald-100 ring-emerald-400/30",
+  amber: "bg-amber-500/20 text-amber-100 ring-amber-400/30",
+} as const;
+
+function Badge({ color, children }: { color: keyof typeof BADGE; children: ReactNode }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${BADGE[color]}`}
+    >
+      {children}
+    </span>
+  );
+}
 
 interface Props {
   onCitySelect: (place: Place) => void;
@@ -64,6 +80,20 @@ export function FilterPanel({
       : mode === "above"
         ? `${aboveCount} / ${totalCount} secteurs à > ${maxAltitude} m`
         : `${totalCount} secteurs · ${aboveCount} au-dessus de ${maxAltitude} m en rouge`;
+
+  const altitudeBadge =
+    mode === "below"
+      ? `Alt ≤ ${maxAltitude} m`
+      : mode === "above"
+        ? `Alt > ${maxAltitude} m`
+        : `> ${maxAltitude} m en rouge`;
+
+  const depBadge =
+    selectedDeps.length === 0
+      ? null
+      : `Dép. ${selectedDeps.slice(0, 5).join(", ")}${
+          selectedDeps.length > 5 ? ` +${selectedDeps.length - 5}` : ""
+        }`;
   return (
     <div className="pointer-events-auto absolute left-4 top-4 z-10 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md">
       <button
@@ -96,10 +126,24 @@ export function FilterPanel({
         Données camptocamp.org · {datasetCount} sites
       </p>
 
+      {collapsed && (
+        <div className="mt-2 flex flex-wrap gap-1 pr-8">
+          <Badge color="sky">{altitudeBadge}</Badge>
+          {franceOnly && <Badge color="emerald">France</Badge>}
+          {depBadge && <Badge color="amber">{depBadge}</Badge>}
+        </div>
+      )}
+
       <div className={collapsed ? "hidden" : ""}>
         <div className="my-4 h-px bg-white/10" />
 
-        <CitySearch onSelect={onCitySelect} />
+        <CitySearch
+          onSelect={(place) => {
+            onCitySelect(place);
+            // Sur mobile, on replie le panneau pour dégager la carte.
+            if (window.matchMedia("(max-width: 639px)").matches) setCollapsed(true);
+          }}
+        />
 
         <div className="my-4 h-px bg-white/10" />
 
