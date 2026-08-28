@@ -74,6 +74,7 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, onSelect }: Props) 
           bearing: 0,
         }}
         maxPitch={80}
+        attributionControl={false}
         mapStyle={MAP_STYLE}
         terrain={{ source: "terrain-dem", exaggeration: 1.35 }}
         style={{ position: "absolute", inset: 0 }}

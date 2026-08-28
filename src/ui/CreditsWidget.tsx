@@ -1,6 +1,19 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 const REPO_URL = "https://github.com/girardinsamuel/carte-sites-escalade-altitude.git";
+
+function Ext({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-medium text-sky-300 underline decoration-sky-300/40 underline-offset-2 hover:text-sky-200"
+    >
+      {children}
+    </a>
+  );
+}
 
 export function CreditsWidget() {
   const [open, setOpen] = useState(false);
@@ -8,20 +21,21 @@ export function CreditsWidget() {
   return (
     <div className="pointer-events-auto absolute bottom-6 right-2 z-20 flex flex-col items-end gap-2 text-white">
       {open && (
-        <div className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs shadow-2xl backdrop-blur-md">
+        <div className="max-w-[15rem] rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-xs leading-relaxed shadow-2xl backdrop-blur-md">
           <div>
             Auteur : <span className="font-medium">Samuel G</span>
           </div>
-          <div className="mt-1">
-            Code :{" "}
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-sky-300 underline decoration-sky-300/40 underline-offset-2 hover:text-sky-200"
-            >
-              dépôt Git
-            </a>
+          <div>
+            Code : <Ext href={REPO_URL}>dépôt Git</Ext>
+          </div>
+          <div className="mt-1.5 border-t border-white/10 pt-1.5 text-white/60">
+            Données : <Ext href="https://www.camptocamp.org">camptocamp.org</Ext>
+            <br />
+            Carte : <Ext href="https://www.maptiler.com/copyright/">© MapTiler</Ext>{" "}
+            <Ext href="https://www.openstreetmap.org/copyright">© OpenStreetMap</Ext>
+            <br />
+            Rendu : <Ext href="https://maplibre.org/">MapLibre</Ext>{" "}·{" "}
+            <Ext href="https://deck.gl/">deck.gl</Ext>
           </div>
         </div>
       )}
