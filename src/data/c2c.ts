@@ -1,5 +1,6 @@
 import proj4 from "proj4";
 import type { LoadProgress, Sector, SectorDetails } from "./types";
+import { depCodeByName } from "./departements";
 
 const API = "https://api.camptocamp.org/waypoints";
 const PAGE = 100;
@@ -10,11 +11,29 @@ function toWgs84(x: number, y: number): [number, number] {
   return [lon, lat];
 }
 
+interface C2cArea {
+  area_type?: string;
+  locales?: { lang?: string; title?: string }[];
+}
+
 interface C2cDoc {
   document_id: number;
   elevation?: number | null;
   locales?: { title?: string }[];
   geometry?: { geom?: string | null } | null;
+  areas?: C2cArea[];
+}
+
+/** Code de département depuis les zones `admin_limits` du document. */
+export function depOf(doc: C2cDoc): string | undefined {
+  for (const a of doc.areas ?? []) {
+    if (a.area_type !== "admin_limits") continue;
+    const title =
+      a.locales?.find((l) => l.lang === "fr")?.title ?? a.locales?.[0]?.title;
+    const code = title ? depCodeByName(title) : undefined;
+    if (code) return code;
+  }
+  return undefined;
 }
 
 /** Transforme un document brut de l'API en Sector, ou null si inexploitable. */
@@ -36,6 +55,7 @@ export function docToSector(doc: C2cDoc): Sector | null {
     lon,
     lat,
     url: `https://www.camptocamp.org/waypoints/${doc.document_id}`,
+    dep: depOf(doc),
   };
 }
 

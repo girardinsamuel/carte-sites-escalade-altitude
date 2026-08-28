@@ -6,6 +6,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import proj4 from "proj4";
+import departements from "../src/data/departements.json" with { type: "json" };
 
 const API = "https://api.camptocamp.org/waypoints";
 const PAGE = 100;
@@ -13,6 +14,28 @@ const OUT = fileURLToPath(new URL("../public/data/sectors.geojson", import.meta.
 
 const toWgs84 = (x, y) => proj4("EPSG:3857", "EPSG:4326", [x, y]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const norm = (s) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/['’´`]/g, "'")
+    .trim();
+
+const DEP_BY_NAME = new Map(departements.map((d) => [norm(d.nom), d.code]));
+DEP_BY_NAME.set("reunion", "974");
+
+function depOf(doc) {
+  for (const a of doc.areas ?? []) {
+    if (a.area_type !== "admin_limits") continue;
+    const title =
+      a.locales?.find((l) => l.lang === "fr")?.title ?? a.locales?.[0]?.title;
+    const code = title ? DEP_BY_NAME.get(norm(title)) : undefined;
+    if (code) return code;
+  }
+  return null;
+}
 
 function docToFeature(doc) {
   const geom = doc.geometry?.geom;
@@ -33,6 +56,7 @@ function docToFeature(doc) {
       name: doc.locales?.[0]?.title?.trim() || `Secteur #${doc.document_id}`,
       elevation: doc.elevation,
       url: `https://www.camptocamp.org/waypoints/${doc.document_id}`,
+      dep: depOf(doc),
     },
   };
 }

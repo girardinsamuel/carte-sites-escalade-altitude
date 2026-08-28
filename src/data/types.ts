@@ -8,6 +8,8 @@ export interface Sector {
   lat: number;
   /** URL de la fiche camptocamp.org. */
   url: string;
+  /** Code du département français (ex. "05"), si connu. */
+  dep?: string;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;

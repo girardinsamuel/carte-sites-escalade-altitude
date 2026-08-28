@@ -19,17 +19,34 @@ export default function App() {
   const [maxAltitude, setMaxAltitude] = useState(1500);
   const [mode, setMode] = useState<DisplayMode>("below");
   const [flyTo, setFlyTo] = useState<Place | null>(null);
+  const [selectedDeps, setSelectedDeps] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState<Progress>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Curseur d'altitude calibré sur le jeu complet (stable quel que soit le filtre).
   const sliderMax = useMemo(() => deriveMax(sectors), [sectors]);
-  const aboveCount = useMemo(
-    () => sectors.reduce((n, s) => (s.elevation > maxAltitude ? n + 1 : n), 0),
-    [sectors, maxAltitude],
+
+  const depCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of sectors) if (s.dep) m.set(s.dep, (m.get(s.dep) ?? 0) + 1);
+    return m;
+  }, [sectors]);
+
+  const filteredSectors = useMemo(
+    () =>
+      selectedDeps.length === 0
+        ? sectors
+        : sectors.filter((s) => s.dep != null && selectedDeps.includes(s.dep)),
+    [sectors, selectedDeps],
   );
-  const belowCount = sectors.length - aboveCount;
+
+  const aboveCount = useMemo(
+    () => filteredSectors.reduce((n, s) => (s.elevation > maxAltitude ? n + 1 : n), 0),
+    [filteredSectors, maxAltitude],
+  );
+  const belowCount = filteredSectors.length - aboveCount;
 
   // Chargement initial depuis le snapshot statique.
   useEffect(() => {
@@ -104,7 +121,7 @@ export default function App() {
   return (
     <div className="relative h-full w-full">
       <MapView
-        sectors={sectors}
+        sectors={filteredSectors}
         maxAltitude={maxAltitude}
         mode={mode}
         flyTo={flyTo}
@@ -112,6 +129,9 @@ export default function App() {
       />
       <FilterPanel
         onCitySelect={setFlyTo}
+        selectedDeps={selectedDeps}
+        onDepsChange={setSelectedDeps}
+        depCounts={depCounts}
         maxAltitude={maxAltitude}
         sliderMax={sliderMax}
         onAltitudeChange={setMaxAltitude}
@@ -119,7 +139,8 @@ export default function App() {
         onModeChange={setMode}
         belowCount={belowCount}
         aboveCount={aboveCount}
-        totalCount={sectors.length}
+        totalCount={filteredSectors.length}
+        datasetCount={sectors.length}
         source={source}
         refreshing={refreshing}
         progress={progress}
