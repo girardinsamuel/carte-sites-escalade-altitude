@@ -27,9 +27,38 @@ type Marker = { sector: Sector; x: number; y: number };
 
 export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
   const { details, request } = useSectorDetails();
-  const [hover, setHover] = useState<Marker | null>(null);
-  const [pinned, setPinned] = useState<Marker | null>(null);
+  const [active, setActive] = useState<Marker | null>(null);
   const mapRef = useRef<MapRef>(null);
+  // Secteur affiché : on ne repositionne l'infobulle qu'au changement de
+  // secteur, pas à chaque mousemove (évite le clignotement).
+  const activeIdRef = useRef<number | null>(null);
+
+  const close = useCallback(() => {
+    activeIdRef.current = null;
+    setActive(null);
+  }, []);
+
+  // Survol comme un clic : l'infobulle se fige et ne se ferme qu'à la croix
+  // (ou en déplaçant la carte). Le survol du vide ne ferme rien.
+  const show = useCallback(
+    (info: PickingInfo<Sector>) => {
+      const obj = info.object ?? null;
+      if (!obj || activeIdRef.current === obj.id) return;
+      activeIdRef.current = obj.id;
+      setActive({ sector: obj, x: info.x, y: info.y });
+      request(obj.id);
+    },
+    [request],
+  );
+
+  // Desktop : un clic sur la carte hors épingle ferme l'infobulle.
+  const handleDeckClick = useCallback(
+    (info: PickingInfo<Sector>) => {
+      if (info.object) return;
+      if (window.matchMedia("(pointer: fine)").matches) close();
+    },
+    [close],
+  );
 
   useEffect(() => {
     const map = mapRef.current;
@@ -43,43 +72,13 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
     }
   }, [flyTo]);
 
-  const handleHover = useCallback(
-    (info: PickingInfo<Sector>) => {
-      if (info.object) {
-        setHover({ sector: info.object, x: info.x, y: info.y });
-        request(info.object.id);
-      } else {
-        setHover(null);
-      }
-    },
-    [request],
-  );
-
-  // Le clic sur un secteur épingle l'infobulle (avec le lien vers la fiche
-  // camptocamp) au lieu d'ouvrir la fiche directement.
-  const handleClick = useCallback(
-    (info: PickingInfo<Sector>) => {
-      if (info.object) {
-        setPinned({ sector: info.object, x: info.x, y: info.y });
-        request(info.object.id);
-      } else {
-        setPinned(null);
-      }
-    },
-    [request],
-  );
-
   const layers = useMemo(
-    () => [
-      sectorLayer({ sectors, maxAltitude, mode, onClick: handleClick, onHover: handleHover }),
-    ],
-    [sectors, maxAltitude, mode, handleClick, handleHover],
+    () => [sectorLayer({ sectors, maxAltitude, mode, onClick: show, onHover: show })],
+    [sectors, maxAltitude, mode, show],
   );
-
-  const active = pinned ?? hover;
 
   return (
-    <div className="absolute inset-0" onPointerLeave={() => setHover(null)}>
+    <div className="absolute inset-0">
       <Map
         ref={mapRef}
         initialViewState={{
@@ -90,7 +89,7 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
           bearing: 0,
         }}
         maxPitch={80}
-        onMoveStart={() => setPinned(null)}
+        onMoveStart={close}
         attributionControl={false}
         mapStyle={MAP_STYLE}
         terrain={{ source: "terrain-dem", exaggeration: 1.35 }}
@@ -98,7 +97,7 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
       >
         <Source id="terrain-dem" type="raster-dem" url={TERRAIN_TILES} tileSize={256} />
         <NavigationControl position="bottom-left" visualizePitch />
-        <DeckOverlay interleaved layers={layers} />
+        <DeckOverlay interleaved layers={layers} onClick={handleDeckClick} />
       </Map>
       {active && (
         <SectorTooltip
@@ -106,8 +105,8 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
           detail={details.get(active.sector.id)}
           x={active.x}
           y={active.y}
-          pinned={Boolean(pinned)}
-          onClose={() => setPinned(null)}
+          pinned
+          onClose={close}
         />
       )}
       <CreditsWidget />
