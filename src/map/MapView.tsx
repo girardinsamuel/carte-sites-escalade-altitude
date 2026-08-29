@@ -46,7 +46,7 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
       if (!obj || activeIdRef.current === obj.id) return;
       activeIdRef.current = obj.id;
       setActive({ sector: obj, x: info.x, y: info.y });
-      request(obj.id);
+      request(obj);
     },
     [request],
   );

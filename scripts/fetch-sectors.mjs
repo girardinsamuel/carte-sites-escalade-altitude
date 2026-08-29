@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-// Snapshot des sites `climbing_outdoor` de camptocamp -> public/data/sectors.geojson
+// Snapshot camptocamp -> public/data/sectors.geojson
+//  - sites d'escalade : waypoints climbing_outdoor
+//  - via ferrata      : itinéraires act=via_ferrata (altitude via route,
+//    sinon repli sur les waypoints associés)
 // Usage : npm run data
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -8,7 +11,6 @@ import { fileURLToPath } from "node:url";
 import proj4 from "proj4";
 import departements from "../src/data/departements.json" with { type: "json" };
 
-const API = "https://api.camptocamp.org/waypoints";
 const PAGE = 100;
 const OUT = fileURLToPath(new URL("../public/data/sectors.geojson", import.meta.url));
 
@@ -37,9 +39,8 @@ function depOf(doc) {
   return null;
 }
 
-function docToFeature(doc) {
-  const geom = doc.geometry?.geom;
-  if (!geom || typeof doc.elevation !== "number") return null;
+function point(geom) {
+  if (!geom) return null;
   let coords;
   try {
     coords = JSON.parse(geom).coordinates;
@@ -47,45 +48,120 @@ function docToFeature(doc) {
     return null;
   }
   const [lon, lat] = toWgs84(coords[0], coords[1]);
-  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
-  return {
-    type: "Feature",
-    geometry: { type: "Point", coordinates: [lon, lat] },
-    properties: {
-      id: doc.document_id,
-      name: doc.locales?.[0]?.title?.trim() || `Secteur #${doc.document_id}`,
-      elevation: doc.elevation,
-      url: `https://www.camptocamp.org/waypoints/${doc.document_id}`,
-      dep: depOf(doc),
-    },
-  };
+  return Number.isFinite(lon) && Number.isFinite(lat) ? [lon, lat] : null;
 }
 
-async function main() {
-  const features = [];
+const feature = (lon, lat, props) => ({
+  type: "Feature",
+  geometry: { type: "Point", coordinates: [lon, lat] },
+  properties: props,
+});
+
+async function getJson(url) {
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} sur ${url}`);
+  return res.json();
+}
+
+async function* paginate(baseUrl, label) {
   let offset = 0;
   let total = Infinity;
-
   while (offset < total) {
-    const res = await fetch(
-      `${API}?wtyp=climbing_outdoor&limit=${PAGE}&offset=${offset}`,
-      { headers: { Accept: "application/json" } },
-    );
-    if (!res.ok) throw new Error(`API camptocamp: HTTP ${res.status}`);
-    const json = await res.json();
+    const json = await getJson(`${baseUrl}&limit=${PAGE}&offset=${offset}`);
     total = json.total ?? 0;
-
-    for (const doc of json.documents ?? []) {
-      const f = docToFeature(doc);
-      if (f) features.push(f);
-    }
-
+    for (const doc of json.documents ?? []) yield doc;
     offset += PAGE;
-    process.stdout.write(`\r  ${Math.min(offset, total)}/${total} waypoints…`);
+    process.stdout.write(`\r  ${label} : ${Math.min(offset, total)}/${total}…`);
     if (!json.documents?.length) break;
     await sleep(150);
   }
+  process.stdout.write("\n");
+}
 
+async function climbing() {
+  const out = [];
+  for await (const doc of paginate(
+    "https://api.camptocamp.org/waypoints?wtyp=climbing_outdoor",
+    "escalade",
+  )) {
+    const pt = point(doc.geometry?.geom);
+    if (!pt || typeof doc.elevation !== "number") continue;
+    out.push(
+      feature(pt[0], pt[1], {
+        id: doc.document_id,
+        kind: "climbing",
+        name: doc.locales?.[0]?.title?.trim() || `Secteur #${doc.document_id}`,
+        elevation: doc.elevation,
+        url: `https://www.camptocamp.org/waypoints/${doc.document_id}`,
+        dep: depOf(doc),
+      }),
+    );
+  }
+  return out;
+}
+
+/** Altitude de repli : plus haut waypoint associé à l'itinéraire. */
+async function routeFallbackElevation(id) {
+  try {
+    const d = await getJson(`https://api.camptocamp.org/routes/${id}?l=fr`);
+    const elevs = (d.associations?.waypoints ?? [])
+      .map((w) => w.elevation)
+      .filter((e) => typeof e === "number");
+    return elevs.length ? Math.max(...elevs) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function routesForActivity(activity, kind, label) {
+  const out = [];
+  let missing = 0;
+  for await (const doc of paginate(
+    `https://api.camptocamp.org/routes?act=${activity}`,
+    label,
+  )) {
+    const pt = point(doc.geometry?.geom);
+    if (!pt) continue;
+    let elevation = doc.elevation_max ?? doc.elevation_min ?? null;
+    if (elevation == null) {
+      elevation = await routeFallbackElevation(doc.document_id);
+      await sleep(120);
+    }
+    if (typeof elevation !== "number") {
+      missing++;
+      continue;
+    }
+    const loc = doc.locales?.[0];
+    const title = loc?.title?.trim();
+    const name =
+      loc?.title_prefix && title
+        ? `${loc.title_prefix} : ${title}`
+        : title || `Itinéraire #${doc.document_id}`;
+    out.push(
+      feature(pt[0], pt[1], {
+        id: doc.document_id,
+        kind,
+        name,
+        elevation,
+        url: `https://www.camptocamp.org/routes/${doc.document_id}`,
+        dep: depOf(doc),
+      }),
+    );
+  }
+  if (missing) console.log(`  (${missing} ${label} sans altitude, ignorées)`);
+  return out;
+}
+
+async function main() {
+  const features = [
+    ...(await climbing()),
+    ...(await routesForActivity("via_ferrata", "via_ferrata", "via ferrata")),
+    ...(await routesForActivity(
+      "mountain_climbing",
+      "mountain",
+      "rocher haute montagne",
+    )),
+  ];
   const fc = {
     type: "FeatureCollection",
     generated: new Date().toISOString(),
@@ -93,8 +169,10 @@ async function main() {
   };
   await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify(fc));
-  process.stdout.write(
-    `\n✓ ${features.length} secteurs écrits dans ${OUT}\n`,
+  const count = (k) => features.filter((f) => f.properties.kind === k).length;
+  console.log(
+    `✓ ${features.length} sites écrits (${count("climbing")} escalade, ` +
+      `${count("via_ferrata")} via ferrata, ${count("mountain")} rocher haute montagne) → ${OUT}`,
   );
 }
 

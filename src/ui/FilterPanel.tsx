@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import type { DisplayMode } from "../data/types";
+import type { DisplayMode, SiteKind } from "../data/types";
 import type { Place } from "../data/geocode";
 import { AltitudeSlider } from "./AltitudeSlider";
 import { CitySearch } from "./CitySearch";
@@ -11,7 +11,22 @@ const BADGE = {
   sky: "bg-sky-500/20 text-sky-100 ring-sky-400/30",
   emerald: "bg-emerald-500/20 text-emerald-100 ring-emerald-400/30",
   amber: "bg-amber-500/20 text-amber-100 ring-amber-400/30",
+  violet: "bg-violet-500/20 text-violet-100 ring-violet-400/30",
 } as const;
+
+const KIND_LABEL: Record<SiteKind, string> = {
+  climbing: "Sites d'escalade",
+  via_ferrata: "Via ferrata",
+  mountain: "Rocher haute montagne",
+};
+
+const KIND_SHORT: Record<SiteKind, string> = {
+  climbing: "Escalade",
+  via_ferrata: "Via ferrata",
+  mountain: "Rocher HM",
+};
+
+const ALL_KIND_ORDER: SiteKind[] = ["climbing", "via_ferrata", "mountain"];
 
 function Badge({ color, children }: { color: keyof typeof BADGE; children: ReactNode }) {
   return (
@@ -25,6 +40,9 @@ function Badge({ color, children }: { color: keyof typeof BADGE; children: React
 
 interface Props {
   onCitySelect: (place: Place) => void;
+  visibleKinds: SiteKind[];
+  onVisibleKindsChange: (kinds: SiteKind[]) => void;
+  kindCounts: Map<SiteKind, number>;
   franceOnly: boolean;
   onFranceOnlyChange: (v: boolean) => void;
   selectedDeps: string[];
@@ -52,6 +70,9 @@ interface Props {
 
 export function FilterPanel({
   onCitySelect,
+  visibleKinds,
+  onVisibleKindsChange,
+  kindCounts,
   franceOnly,
   onFranceOnlyChange,
   selectedDeps,
@@ -74,6 +95,22 @@ export function FilterPanel({
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
 
+  const toggleKind = (k: SiteKind) =>
+    onVisibleKindsChange(
+      visibleKinds.includes(k)
+        ? visibleKinds.filter((x) => x !== k)
+        : [...visibleKinds, k],
+    );
+
+  const kindBadge =
+    visibleKinds.length === 3
+      ? null
+      : visibleKinds.length === 0
+        ? "Aucun type"
+        : ALL_KIND_ORDER.filter((k) => visibleKinds.includes(k))
+            .map((k) => KIND_SHORT[k])
+            .join(" + ");
+
   const summary =
     mode === "below"
       ? `${belowCount} / ${totalCount} secteurs à ≤ ${maxAltitude} m`
@@ -95,7 +132,7 @@ export function FilterPanel({
           selectedDeps.length > 5 ? ` +${selectedDeps.length - 5}` : ""
         }`;
   return (
-    <div className="pointer-events-auto absolute left-4 top-4 z-10 w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md">
+    <div className="pointer-events-auto absolute left-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[min(20rem,calc(100vw-2rem))] flex-col rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md">
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
@@ -129,12 +166,13 @@ export function FilterPanel({
       {collapsed && (
         <div className="mt-2 flex flex-wrap gap-1 pr-8">
           <Badge color="sky">{altitudeBadge}</Badge>
+          {kindBadge && <Badge color="violet">{kindBadge}</Badge>}
           {franceOnly && <Badge color="emerald">France</Badge>}
           {depBadge && <Badge color="amber">{depBadge}</Badge>}
         </div>
       )}
 
-      <div className={collapsed ? "hidden" : ""}>
+      <div className={collapsed ? "hidden" : "-mr-2 min-h-0 flex-1 overflow-y-auto pr-2"}>
         <div className="my-4 h-px bg-white/10" />
 
         <CitySearch
@@ -147,15 +185,24 @@ export function FilterPanel({
 
         <div className="my-4 h-px bg-white/10" />
 
-        <label className="flex items-center gap-2 text-xs font-medium text-white/80">
-          <input
-            type="checkbox"
-            checked={franceOnly}
-            onChange={(e) => onFranceOnlyChange(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-sky-500"
-          />
-          Sites en France
-        </label>
+        <div className="mb-2 text-xs font-medium text-white/70">Type de site</div>
+        <div className="flex flex-col gap-1.5">
+          {ALL_KIND_ORDER.map((k) => (
+            <label
+              key={k}
+              className="flex items-center gap-2 text-xs font-medium text-white/80"
+            >
+              <input
+                type="checkbox"
+                checked={visibleKinds.includes(k)}
+                onChange={() => toggleKind(k)}
+                className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-sky-500"
+              />
+              {KIND_LABEL[k]}
+              <span className="text-white/35">{kindCounts.get(k) ?? 0}</span>
+            </label>
+          ))}
+        </div>
 
         <div className="mt-3">
           <DepartementFilter
@@ -174,6 +221,16 @@ export function FilterPanel({
         <div className="my-4 h-px bg-white/10" />
 
         <ModeToggle value={mode} onChange={onModeChange} />
+
+        <label className="mt-3 flex items-center gap-2 text-xs font-medium text-white/80">
+          <input
+            type="checkbox"
+            checked={franceOnly}
+            onChange={(e) => onFranceOnlyChange(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 accent-sky-500"
+          />
+          Afficher que les sites en France
+        </label>
 
         <div className="my-4 h-px bg-white/10" />
 

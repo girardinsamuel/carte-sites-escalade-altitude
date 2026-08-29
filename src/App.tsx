@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapView, hasMapKey } from "./map/MapView";
 import { FilterPanel } from "./ui/FilterPanel";
 import { loadLocal, refreshFromApi } from "./data/loadSectors";
-import type { DisplayMode, Sector } from "./data/types";
+import type { DisplayMode, Sector, SiteKind } from "./data/types";
 import type { Place } from "./data/geocode";
+
+const ALL_KINDS: SiteKind[] = ["climbing", "via_ferrata", "mountain"];
 
 type Progress = { loaded: number; total: number } | null;
 
@@ -20,6 +22,7 @@ export default function App() {
   const [mode, setMode] = useState<DisplayMode>("below");
   const [flyTo, setFlyTo] = useState<Place | null>(null);
   const [franceOnly, setFranceOnly] = useState(true);
+  const [visibleKinds, setVisibleKinds] = useState<SiteKind[]>(ALL_KINDS);
   const [selectedDeps, setSelectedDeps] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState<Progress>(null);
@@ -35,13 +38,19 @@ export default function App() {
     return m;
   }, [sectors]);
 
+  const kindCounts = useMemo(() => {
+    const m = new Map<SiteKind, number>();
+    for (const s of sectors) m.set(s.kind, (m.get(s.kind) ?? 0) + 1);
+    return m;
+  }, [sectors]);
+
   const filteredSectors = useMemo(() => {
-    let list = sectors;
+    let list = sectors.filter((s) => visibleKinds.includes(s.kind));
     if (franceOnly) list = list.filter((s) => s.dep != null);
     if (selectedDeps.length > 0)
       list = list.filter((s) => s.dep != null && selectedDeps.includes(s.dep));
     return list;
-  }, [sectors, franceOnly, selectedDeps]);
+  }, [sectors, visibleKinds, franceOnly, selectedDeps]);
 
   const aboveCount = useMemo(
     () => filteredSectors.reduce((n, s) => (s.elevation > maxAltitude ? n + 1 : n), 0),
@@ -125,6 +134,9 @@ export default function App() {
       />
       <FilterPanel
         onCitySelect={setFlyTo}
+        visibleKinds={visibleKinds}
+        onVisibleKindsChange={setVisibleKinds}
+        kindCounts={kindCounts}
         franceOnly={franceOnly}
         onFranceOnlyChange={setFranceOnly}
         selectedDeps={selectedDeps}

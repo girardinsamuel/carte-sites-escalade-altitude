@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchWaypointDetails } from "../data/c2c";
-import type { SectorDetails } from "../data/types";
+import { fetchRouteDetails, fetchWaypointDetails } from "../data/c2c";
+import type { Sector, SectorDetails } from "../data/types";
 
 export type DetailEntry = SectorDetails | "loading" | "error";
 
@@ -21,12 +21,14 @@ export function useSectorDetails() {
     return () => ctrl.abort();
   }, []);
 
-  const request = useCallback((id: number) => {
+  const request = useCallback((sector: Sector) => {
+    const { id, kind } = sector;
     if (inFlight.current.has(id)) return;
     inFlight.current.add(id);
     setDetails((m) => new Map(m).set(id, "loading"));
 
-    fetchWaypointDetails(id, controller.current.signal)
+    const fetcher = kind === "climbing" ? fetchWaypointDetails : fetchRouteDetails;
+    fetcher(id, controller.current.signal)
       .then((d) => setDetails((m) => new Map(m).set(id, d)))
       .catch((e: unknown) => {
         if ((e as { name?: string }).name === "AbortError") return;

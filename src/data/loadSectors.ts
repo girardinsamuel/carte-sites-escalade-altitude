@@ -1,11 +1,12 @@
-import type { LoadProgress, Sector } from "./types";
-import { fetchClimbingWaypoints } from "./c2c";
+import type { LoadProgress, Sector, SiteKind } from "./types";
+import { fetchAllSites } from "./c2c";
 
 interface SectorFeatureCollection {
   features: {
     geometry: { coordinates: [number, number] };
     properties: {
       id: number;
+      kind?: SiteKind;
       name: string;
       elevation: number;
       url: string;
@@ -25,6 +26,7 @@ export async function loadLocal(): Promise<Sector[]> {
   const fc = (await res.json()) as SectorFeatureCollection;
   return fc.features.map((f) => ({
     id: f.properties.id,
+    kind: f.properties.kind ?? "climbing",
     name: f.properties.name,
     elevation: f.properties.elevation,
     lon: f.geometry.coordinates[0],
@@ -39,5 +41,5 @@ export async function refreshFromApi(
   onProgress?: LoadProgress,
   signal?: AbortSignal,
 ): Promise<Sector[]> {
-  return fetchClimbingWaypoints({ signal, onProgress });
+  return fetchAllSites({ signal, onProgress });
 }

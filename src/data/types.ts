@@ -1,6 +1,10 @@
-/** Un secteur d'escalade prêt à afficher (dérivé d'un waypoint camptocamp). */
+/** Type de site : escalade, via ferrata, ou rocher haute montagne. */
+export type SiteKind = "climbing" | "via_ferrata" | "mountain";
+
+/** Un site (escalade ou via ferrata) prêt à afficher, dérivé de camptocamp. */
 export interface Sector {
   id: number;
+  kind: SiteKind;
   name: string;
   /** Altitude en mètres — pilote le filtre du curseur. */
   elevation: number;
@@ -24,6 +28,10 @@ export interface SectorDetails {
   ratingMin: string | null;
   ratingMax: string | null;
   heightMax: number | null;
+  /** Cotation via ferrata (K1–K6), si applicable. */
+  viaFerrataRating?: string | null;
+  /** Cotation globale d'alpinisme (F, PD, AD, D, TD…), si applicable. */
+  globalRating?: string | null;
 }
 
 /**

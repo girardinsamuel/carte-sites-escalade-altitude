@@ -1,7 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import type { Sector } from "../data/types";
+import type { Sector, SiteKind } from "../data/types";
 import type { DetailEntry } from "../map/useSectorDetails";
 import { cap, ratingRange, styleLabel, typeLabel } from "../data/labels";
+
+const KIND_TAG: Partial<Record<SiteKind, string>> = {
+  via_ferrata: "Via ferrata",
+  mountain: "Rocher haute montagne",
+};
 
 interface Props {
   sector: Sector;
@@ -16,7 +21,13 @@ interface Props {
 /** Marge minimale entre l'infobulle et le bord de l'écran. */
 const MARGIN = 12;
 
-function DetailBody({ detail }: { detail: DetailEntry | undefined }) {
+function DetailBody({
+  detail,
+  kind,
+}: {
+  detail: DetailEntry | undefined;
+  kind: SiteKind;
+}) {
   if (!detail || detail === "loading")
     return (
       <div className="flex justify-center py-4" role="status" aria-label="Chargement">
@@ -28,8 +39,10 @@ function DetailBody({ detail }: { detail: DetailEntry | undefined }) {
 
   const stats = [
     detail.routesQuantity ? `${detail.routesQuantity} voies` : null,
+    detail.viaFerrataRating ? `Cotation ${detail.viaFerrataRating}` : null,
+    detail.globalRating ? `Cotation ${detail.globalRating}` : null,
     ratingRange(detail.ratingMin, detail.ratingMax),
-    detail.heightMax ? `${detail.heightMax} m max` : null,
+    detail.heightMax ? `${detail.heightMax} m ${kind === "climbing" ? "max" : "D+"}` : null,
   ].filter(Boolean);
 
   const empty =
@@ -114,8 +127,15 @@ export function SectorTooltip({ sector, detail, x, y, pinned = false, onClose }:
         </button>
       )}
       <div className={`font-semibold ${pinned ? "pr-10" : ""}`}>{sector.name}</div>
-      <div className="text-white/55">{Math.round(sector.elevation)} m</div>
-      <DetailBody detail={detail} />
+      <div className="text-white/55">
+        {Math.round(sector.elevation)} m
+        {KIND_TAG[sector.kind] && (
+          <span className="ml-1.5 rounded bg-white/10 px-1 py-px text-[10px] font-medium text-white/70">
+            {KIND_TAG[sector.kind]}
+          </span>
+        )}
+      </div>
+      <DetailBody detail={detail} kind={sector.kind} />
       <a
         href={sector.url}
         target="_blank"
