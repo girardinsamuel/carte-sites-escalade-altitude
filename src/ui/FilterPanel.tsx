@@ -93,7 +93,12 @@ export function FilterPanel({
   error,
   onRefresh,
 }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Sur mobile, le panneau démarre replié pour dégager la carte.
+  const [collapsed, setCollapsed] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 639px)").matches,
+  );
 
   const toggleKind = (k: SiteKind) =>
     onVisibleKindsChange(
@@ -132,7 +137,7 @@ export function FilterPanel({
           selectedDeps.length > 5 ? ` +${selectedDeps.length - 5}` : ""
         }`;
   return (
-    <div className="pointer-events-auto absolute left-4 top-4 z-10 flex max-h-[calc(100vh-2rem)] w-[min(20rem,calc(100vw-2rem))] flex-col rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md">
+    <div className="pointer-events-auto absolute inset-x-2 top-2 z-10 flex max-h-[calc(100vh-1rem)] flex-col rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md sm:inset-x-auto sm:left-4 sm:top-4 sm:max-h-[calc(100vh-2rem)] sm:w-[min(20rem,calc(100vw-2rem))]">
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
@@ -146,13 +151,21 @@ export function FilterPanel({
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2.5"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden="true"
-          className={collapsed ? "" : "rotate-180"}
         >
-          <path d="M6 9l6 6 6-6" />
+          {collapsed ? (
+            <>
+              <path d="M4 6h16M4 12h16M4 18h16" />
+              <circle cx="9" cy="6" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="15" cy="12" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="9" cy="18" r="2.2" fill="currentColor" stroke="none" />
+            </>
+          ) : (
+            <path d="M6 15l6-6 6 6" />
+          )}
         </svg>
       </button>
 
@@ -164,11 +177,21 @@ export function FilterPanel({
       </p>
 
       {collapsed && (
-        <div className="mt-2 flex flex-wrap gap-1 pr-8">
-          <Badge color="sky">{altitudeBadge}</Badge>
-          {kindBadge && <Badge color="violet">{kindBadge}</Badge>}
-          {franceOnly && <Badge color="emerald">France</Badge>}
-          {depBadge && <Badge color="amber">{depBadge}</Badge>}
+        <div className="mt-2">
+          <div className="flex flex-wrap gap-1 pr-8">
+            <Badge color="sky">{altitudeBadge}</Badge>
+            {kindBadge && <Badge color="violet">{kindBadge}</Badge>}
+            {franceOnly && <Badge color="emerald">France</Badge>}
+            {depBadge && <Badge color="amber">{depBadge}</Badge>}
+          </div>
+          <div className="mt-3">
+            <AltitudeSlider
+              value={maxAltitude}
+              max={sliderMax}
+              onChange={onAltitudeChange}
+            />
+            <p className="mt-2 text-xs tabular-nums text-white/70">{summary}</p>
+          </div>
         </div>
       )}
 
