@@ -4,6 +4,7 @@ import type { PickingInfo } from "@deck.gl/core";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { DisplayMode, Sector } from "../data/types";
 import type { Place } from "../data/geocode";
+import type { Bounds } from "../ui/SectorList";
 import { SectorTooltip } from "../ui/SectorTooltip";
 import { CreditsWidget } from "../ui/CreditsWidget";
 import { sectorLayer } from "./sectorLayer";
@@ -21,11 +22,15 @@ interface Props {
   maxAltitude: number;
   mode: DisplayMode;
   flyTo: Place | null;
+  /** Secteur choisi dans la liste : centrage si besoin puis infobulle. */
+  focus: { sector: Sector } | null;
+  /** Emprise visible, émise après chaque déplacement. */
+  onBoundsChange?: (b: Bounds) => void;
 }
 
 type Marker = { sector: Sector; x: number; y: number };
 
-export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
+export function MapView({ sectors, maxAltitude, mode, flyTo, focus, onBoundsChange }: Props) {
   const { details, request } = useSectorDetails();
   const [active, setActive] = useState<Marker | null>(null);
   const mapRef = useRef<MapRef>(null);
@@ -72,6 +77,49 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
     }
   }, [flyTo]);
 
+  // Infobulle ouverte sur l'épingle d'un secteur, comme au survol.
+  const showSector = useCallback(
+    (s: Sector) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const p = map.project([s.lon, s.lat]);
+      activeIdRef.current = s.id;
+      // Remonte sur le corps de l'épingle (ancrée par sa pointe).
+      setActive({ sector: s, x: p.x, y: p.y - 18 });
+      request(s);
+    },
+    [request],
+  );
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !focus) return;
+    const s = focus.sector;
+    const zoom = map.getZoom();
+    if (zoom >= 11 && map.getBounds().contains([s.lon, s.lat])) {
+      showSector(s);
+      return;
+    }
+    const onEnd = () => showSector(s);
+    map.once("moveend", onEnd);
+    map.flyTo({
+      center: [s.lon, s.lat],
+      zoom: Math.max(zoom, 13),
+      pitch: map.getPitch(),
+      bearing: map.getBearing(),
+      duration: 1400,
+    });
+    return () => {
+      map.off("moveend", onEnd);
+    };
+  }, [focus, showSector]);
+
+  const emitBounds = useCallback(() => {
+    const b = mapRef.current?.getBounds();
+    if (b && onBoundsChange)
+      onBoundsChange([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+  }, [onBoundsChange]);
+
   const layers = useMemo(
     () => [sectorLayer({ sectors, maxAltitude, mode, onClick: show, onHover: show })],
     [sectors, maxAltitude, mode, show],
@@ -90,6 +138,9 @@ export function MapView({ sectors, maxAltitude, mode, flyTo }: Props) {
         }}
         maxPitch={80}
         onMoveStart={close}
+        onMoveEnd={emitBounds}
+        onLoad={emitBounds}
+        onResize={emitBounds}
         attributionControl={false}
         mapStyle={MAP_STYLE}
         terrain={{ source: "terrain-dem", exaggeration: 1.35 }}

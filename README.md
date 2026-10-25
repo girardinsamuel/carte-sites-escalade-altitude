@@ -23,10 +23,20 @@ npm run dev
 
 ## Données
 
-- `npm run data` — snapshot statique des ~5 300 sites `climbing_outdoor`
-  (`scripts/fetch-sectors.mjs`, reprojection EPSG:3857 → WGS84).
+- `npm run data` — snapshot statique (`scripts/fetch-sectors.mjs`, reprojection
+  EPSG:3857 → WGS84) : sites `climbing_outdoor`, via ferrata et rocher haute
+  montagne, avec cotation, orientation et massif. Pour les sites d'escalade, la
+  cotation et l'orientation demandent une requête par site (~5 300) : compter
+  quelques minutes.
 - Le bouton **« Rafraîchir depuis camptocamp »** dans l'app réinterroge l'API en
   direct ; en cas d'échec (réseau / CORS), les données locales sont conservées.
+  La cotation et l'orientation des sites d'escalade sont alors reprises du snapshot.
+
+## Vues
+
+Carte, carte + liste ou liste seule. La liste suit les mêmes filtres et le même
+mode d'affichage que la carte ; recherche par nom ou massif, tri par colonne,
+export CSV, limitation à la zone visible de la carte (vue carte + liste).
 
 ## Build
 

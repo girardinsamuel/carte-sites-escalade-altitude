@@ -14,6 +14,13 @@ export interface Sector {
   url: string;
   /** Code du département français (ex. "05"), si connu. */
   dep?: string;
+  /** Cotation globale d'alpinisme (F, PD, AD…), pour les itinéraires. */
+  globalRating?: string;
+  /** Cotation affichable : « 5a–7b », « K3 », « TD · 6a »… */
+  rating?: string;
+  orientations?: string[];
+  /** Massif camptocamp (zone de type `range`). */
+  massif?: string;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;
@@ -41,3 +48,6 @@ export interface SectorDetails {
  * - `highlight`  : tous les secteurs, ceux au-dessus de la limite en rouge foncé
  */
 export type DisplayMode = "below" | "above" | "highlight";
+
+/** Vue principale : carte seule, carte + liste, ou liste seule. */
+export type ViewMode = "map" | "split" | "list";

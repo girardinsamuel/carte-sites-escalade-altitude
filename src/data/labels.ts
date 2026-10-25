@@ -1,5 +1,25 @@
 /** Libellés FR des valeurs d'énumération camptocamp. */
 
+import type { SiteKind } from "./types";
+
+export const KIND_LABEL: Record<SiteKind, string> = {
+  climbing: "Sites d'escalade",
+  via_ferrata: "Via ferrata",
+  mountain: "Rocher haute montagne",
+};
+
+export const KIND_SHORT: Record<SiteKind, string> = {
+  climbing: "Escalade",
+  via_ferrata: "Via ferrata",
+  mountain: "Rocher HM",
+};
+
+/** Cotations globales camptocamp, de la plus facile à la plus difficile. */
+export const GLOBAL_RATINGS = [
+  "F", "F+", "PD-", "PD", "PD+", "AD-", "AD", "AD+", "D-", "D", "D+",
+  "TD-", "TD", "TD+", "ED-", "ED", "ED+", "ED4", "ED5", "ED6", "ED7",
+];
+
 const TYPE_LABELS: Record<string, string> = {
   single: "Couenne / falaise",
   multi: "Grande voie",

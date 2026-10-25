@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Snapshot camptocamp -> public/data/sectors.geojson
-//  - sites d'escalade : waypoints climbing_outdoor
+//  - sites d'escalade : waypoints climbing_outdoor (+ détail par site pour
+//    cotation et orientation, absentes de la liste)
 //  - via ferrata      : itinéraires act=via_ferrata (altitude via route,
 //    sinon repli sur les waypoints associés)
 // Usage : npm run data
@@ -51,10 +52,27 @@ function point(geom) {
   return Number.isFinite(lon) && Number.isFinite(lat) ? [lon, lat] : null;
 }
 
+/** Massif : zone `range` du document. */
+function massifOf(doc) {
+  const a = doc.areas?.find((x) => x.area_type === "range");
+  const title = (a?.locales?.find((l) => l.lang === "fr") ?? a?.locales?.[0])?.title;
+  return title?.trim() || null;
+}
+
+/** "4c–7b", "7b", ou null. */
+const ratingRange = (min, max) =>
+  min && max && min !== max ? `${min}–${max}` : (max ?? min ?? null);
+
+/** Propriétés présentes uniquement (allège le GeoJSON). */
+const compact = (o) =>
+  Object.fromEntries(
+    Object.entries(o).filter(([, v]) => v != null && !(Array.isArray(v) && !v.length)),
+  );
+
 const feature = (lon, lat, props) => ({
   type: "Feature",
   geometry: { type: "Point", coordinates: [lon, lat] },
-  properties: props,
+  properties: compact(props),
 });
 
 async function getJson(url) {
@@ -63,11 +81,33 @@ async function getJson(url) {
   return res.json();
 }
 
+async function getJsonRetry(url, tries = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      return await getJson(url);
+    } catch (e) {
+      if (i >= tries) throw e;
+      await sleep(1000 * i);
+    }
+  }
+}
+
+/** Exécute `fn` sur chaque élément avec au plus `size` appels simultanés. */
+async function pool(items, size, fn) {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: size }, async () => {
+      while (next < items.length) await fn(items[next++]);
+    }),
+  );
+}
+
 async function* paginate(baseUrl, label) {
   let offset = 0;
   let total = Infinity;
   while (offset < total) {
-    const json = await getJson(`${baseUrl}&limit=${PAGE}&offset=${offset}`);
+    // pl=fr : titres en français quand la traduction existe.
+    const json = await getJson(`${baseUrl}&pl=fr&limit=${PAGE}&offset=${offset}`);
     total = json.total ?? 0;
     for (const doc of json.documents ?? []) yield doc;
     offset += PAGE;
@@ -94,9 +134,31 @@ async function climbing() {
         elevation: doc.elevation,
         url: `https://www.camptocamp.org/waypoints/${doc.document_id}`,
         dep: depOf(doc),
+        massif: massifOf(doc),
       }),
     );
   }
+
+  let done = 0;
+  await pool(out, 4, async (f) => {
+    try {
+      const d = await getJsonRetry(
+        `https://api.camptocamp.org/waypoints/${f.properties.id}?l=fr`,
+      );
+      Object.assign(
+        f.properties,
+        compact({
+          rating: ratingRange(d.climbing_rating_min, d.climbing_rating_max),
+          orientations: d.orientations,
+        }),
+      );
+    } catch {
+      // détail indisponible : site conservé sans cotation ni orientation
+    }
+    if (++done % 50 === 0 || done === out.length)
+      process.stdout.write(`\r  détails escalade : ${done}/${out.length}…`);
+  });
+  process.stdout.write("\n");
   return out;
 }
 
@@ -145,6 +207,14 @@ async function routesForActivity(activity, kind, label) {
         elevation,
         url: `https://www.camptocamp.org/routes/${doc.document_id}`,
         dep: depOf(doc),
+        globalRating: doc.global_rating,
+        rating:
+          kind === "via_ferrata"
+            ? doc.via_ferrata_rating
+            : [doc.global_rating, doc.rock_free_rating].filter(Boolean).join(" · ") ||
+              null,
+        orientations: doc.orientations,
+        massif: massifOf(doc),
       }),
     );
   }

@@ -1,19 +1,5 @@
 import { LEGEND_STOPS } from "../map/altitudeColor";
-
-const PIN_CLIMB =
-  "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z";
-const PIN_VIA =
-  "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM8.6 6.6h6.8v1.7H8.6zm0 3.4h6.8v1.7H8.6z";
-const PIN_MTN =
-  "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM12 5.4l3.8 6.4H8.2z";
-
-function Glyph({ d }: { d: string }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true">
-      <path d={d} fill="currentColor" fillRule="evenodd" />
-    </svg>
-  );
-}
+import { KindGlyph } from "./KindGlyph";
 
 export function Legend() {
   const gradient = LEGEND_STOPS.map(
@@ -35,15 +21,15 @@ export function Legend() {
 
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-white/60">
         <span className="flex items-center gap-1">
-          <Glyph d={PIN_CLIMB} />
+          <KindGlyph kind="climbing" />
           Escalade
         </span>
         <span className="flex items-center gap-1">
-          <Glyph d={PIN_VIA} />
+          <KindGlyph kind="via_ferrata" />
           Via ferrata
         </span>
         <span className="flex items-center gap-1">
-          <Glyph d={PIN_MTN} />
+          <KindGlyph kind="mountain" />
           Rocher haute montagne
         </span>
       </div>

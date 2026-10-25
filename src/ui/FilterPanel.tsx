@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react";
-import type { DisplayMode, SiteKind } from "../data/types";
+import type { DisplayMode, SiteKind, ViewMode } from "../data/types";
 import type { Place } from "../data/geocode";
+import { KIND_LABEL, KIND_SHORT } from "../data/labels";
 import { AltitudeSlider } from "./AltitudeSlider";
 import { CitySearch } from "./CitySearch";
 import { DepartementFilter } from "./DepartementFilter";
 import { ModeToggle } from "./ModeToggle";
 import { Legend } from "./Legend";
+import { ViewToggle } from "./ViewToggle";
 
 const BADGE = {
   sky: "bg-sky-500/20 text-sky-100 ring-sky-400/30",
@@ -13,18 +15,6 @@ const BADGE = {
   amber: "bg-amber-500/20 text-amber-100 ring-amber-400/30",
   violet: "bg-violet-500/20 text-violet-100 ring-violet-400/30",
 } as const;
-
-const KIND_LABEL: Record<SiteKind, string> = {
-  climbing: "Sites d'escalade",
-  via_ferrata: "Via ferrata",
-  mountain: "Rocher haute montagne",
-};
-
-const KIND_SHORT: Record<SiteKind, string> = {
-  climbing: "Escalade",
-  via_ferrata: "Via ferrata",
-  mountain: "Rocher HM",
-};
 
 const ALL_KIND_ORDER: SiteKind[] = ["climbing", "via_ferrata", "mountain"];
 
@@ -38,11 +28,22 @@ function Badge({ color, children }: { color: keyof typeof BADGE; children: React
   );
 }
 
-interface Props {
+export interface FilterPanelProps {
+  view: ViewMode;
+  onViewChange: (v: ViewMode) => void;
+  /** Panneau intégré à la mise en page (vue liste) plutôt que flottant sur la carte. */
+  docked?: boolean;
   onCitySelect: (place: Place) => void;
   visibleKinds: SiteKind[];
   onVisibleKindsChange: (kinds: SiteKind[]) => void;
   kindCounts: Map<SiteKind, number>;
+  /** Exclut les itinéraires rocher HM dont le titre évoque arête, couloir… */
+  excludeRidgeTitles: boolean;
+  onExcludeRidgeTitlesChange: (v: boolean) => void;
+  /** Exclut les itinéraires rocher HM de cotation globale < AD+. */
+  excludeEasyRating: boolean;
+  onExcludeEasyRatingChange: (v: boolean) => void;
+  shortRopeCounts: { title: number; rating: number };
   franceOnly: boolean;
   onFranceOnlyChange: (v: boolean) => void;
   selectedDeps: string[];
@@ -69,10 +70,18 @@ interface Props {
 }
 
 export function FilterPanel({
+  view,
+  onViewChange,
+  docked = false,
   onCitySelect,
   visibleKinds,
   onVisibleKindsChange,
   kindCounts,
+  excludeRidgeTitles,
+  onExcludeRidgeTitlesChange,
+  excludeEasyRating,
+  onExcludeEasyRatingChange,
+  shortRopeCounts,
   franceOnly,
   onFranceOnlyChange,
   selectedDeps,
@@ -92,7 +101,7 @@ export function FilterPanel({
   progress,
   error,
   onRefresh,
-}: Props) {
+}: FilterPanelProps) {
   // Sur mobile, le panneau démarre replié pour dégager la carte.
   const [collapsed, setCollapsed] = useState(
     () =>
@@ -130,6 +139,9 @@ export function FilterPanel({
         ? `Alt > ${maxAltitude} m`
         : `> ${maxAltitude} m en rouge`;
 
+  const shortRopeBadge =
+    excludeRidgeTitles || excludeEasyRating ? "Sans corde courte" : null;
+
   const depBadge =
     selectedDeps.length === 0
       ? null
@@ -137,7 +149,13 @@ export function FilterPanel({
           selectedDeps.length > 5 ? ` +${selectedDeps.length - 5}` : ""
         }`;
   return (
-    <div className="pointer-events-auto absolute inset-x-2 top-2 z-10 flex max-h-[calc(100vh-1rem)] flex-col rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md sm:inset-x-auto sm:left-4 sm:top-4 sm:max-h-[calc(100vh-2rem)] sm:w-[min(20rem,calc(100vw-2rem))]">
+    <div
+      className={
+        docked
+          ? "relative z-10 flex max-h-[55%] shrink-0 flex-col border-b border-white/10 bg-slate-900 p-4 text-white sm:max-h-none sm:w-80 sm:border-b-0 sm:border-r"
+          : "pointer-events-auto absolute inset-x-2 top-2 z-10 flex max-h-[calc(100%-1rem)] flex-col rounded-2xl border border-white/10 bg-slate-900/70 p-4 text-white shadow-2xl backdrop-blur-md sm:inset-x-auto sm:left-4 sm:top-4 sm:max-h-[calc(100%-2rem)] sm:w-[min(20rem,calc(100vw-2rem))]"
+      }
+    >
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
@@ -176,11 +194,16 @@ export function FilterPanel({
         Données camptocamp.org · {datasetCount} sites
       </p>
 
+      <div className="mt-2.5">
+        <ViewToggle value={view} onChange={onViewChange} />
+      </div>
+
       {collapsed && (
         <div className="mt-2">
           <div className="flex flex-wrap gap-1 pr-8">
             <Badge color="sky">{altitudeBadge}</Badge>
             {kindBadge && <Badge color="violet">{kindBadge}</Badge>}
+            {shortRopeBadge && <Badge color="violet">{shortRopeBadge}</Badge>}
             {franceOnly && <Badge color="emerald">France</Badge>}
             {depBadge && <Badge color="amber">{depBadge}</Badge>}
           </div>
@@ -202,7 +225,7 @@ export function FilterPanel({
           onSelect={(place) => {
             onCitySelect(place);
             // Sur mobile, on replie le panneau pour dégager la carte.
-            if (window.matchMedia("(max-width: 639px)").matches) setCollapsed(true);
+            if (!docked && window.matchMedia("(max-width: 639px)").matches) setCollapsed(true);
           }}
         />
 
@@ -225,6 +248,45 @@ export function FilterPanel({
               <span className="text-white/35">{kindCounts.get(k) ?? 0}</span>
             </label>
           ))}
+        </div>
+
+        <div
+          className={`mt-3 rounded-lg border border-white/10 bg-white/5 p-2.5 transition ${
+            visibleKinds.includes("mountain") ? "" : "opacity-40"
+          }`}
+        >
+          <div className="mb-2 text-xs font-medium text-white/70">
+            Exclure courses d'arêtes / corde courte
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-start gap-2 text-xs font-medium text-white/80">
+              <input
+                type="checkbox"
+                checked={excludeRidgeTitles}
+                onChange={(e) => onExcludeRidgeTitlesChange(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-white/20 bg-white/5 accent-sky-500"
+              />
+              <span>
+                Titre : arête, couloir, voie normale, traversée…{" "}
+                <span className="text-white/35">{shortRopeCounts.title}</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-xs font-medium text-white/80">
+              <input
+                type="checkbox"
+                checked={excludeEasyRating}
+                onChange={(e) => onExcludeEasyRatingChange(e.target.checked)}
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-white/20 bg-white/5 accent-sky-500"
+              />
+              <span>
+                Cotation globale &lt; AD+{" "}
+                <span className="text-white/35">{shortRopeCounts.rating}</span>
+              </span>
+            </label>
+          </div>
+          <p className="mt-1.5 text-[10px] text-white/40">
+            S'applique aux itinéraires rocher haute montagne.
+          </p>
         </div>
 
         <div className="mt-3">

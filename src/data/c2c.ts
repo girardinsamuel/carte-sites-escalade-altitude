@@ -28,6 +28,10 @@ interface C2cDoc {
 interface C2cRouteDoc extends C2cDoc {
   elevation_min?: number | null;
   elevation_max?: number | null;
+  global_rating?: string | null;
+  rock_free_rating?: string | null;
+  via_ferrata_rating?: string | null;
+  orientations?: string[] | null;
 }
 
 function parsePoint(geom: string | null | undefined): [number, number] | null {
@@ -54,6 +58,21 @@ export function depOf(doc: C2cDoc): string | undefined {
   return undefined;
 }
 
+/** Massif : zone `range` du document. */
+export function massifOf(doc: C2cDoc): string | undefined {
+  const a = doc.areas?.find((x) => x.area_type === "range");
+  return (a?.locales?.find((l) => l.lang === "fr") ?? a?.locales?.[0])?.title?.trim();
+}
+
+/** Cotation affichable d'un itinéraire selon son activité. */
+function routeRating(
+  doc: C2cRouteDoc,
+  kind: Exclude<SiteKind, "climbing">,
+): string | undefined {
+  if (kind === "via_ferrata") return doc.via_ferrata_rating ?? undefined;
+  return [doc.global_rating, doc.rock_free_rating].filter(Boolean).join(" · ") || undefined;
+}
+
 /** Waypoint `climbing_outdoor` → Sector, ou null si inexploitable. */
 export function docToSector(doc: C2cDoc): Sector | null {
   if (typeof doc.elevation !== "number") return null;
@@ -68,6 +87,7 @@ export function docToSector(doc: C2cDoc): Sector | null {
     lat: pt[1],
     url: `https://www.camptocamp.org/waypoints/${doc.document_id}`,
     dep: depOf(doc),
+    massif: massifOf(doc),
   };
 }
 
@@ -96,6 +116,10 @@ export function routeToSector(
     lat: pt[1],
     url: `https://www.camptocamp.org/routes/${doc.document_id}`,
     dep: depOf(doc),
+    globalRating: doc.global_rating ?? undefined,
+    rating: routeRating(doc, kind),
+    orientations: doc.orientations?.length ? doc.orientations : undefined,
+    massif: massifOf(doc),
   };
 }
 
@@ -114,7 +138,8 @@ async function paginate<T>(
   let total = Number.POSITIVE_INFINITY;
 
   while (offset < total) {
-    const res = await fetch(`${baseUrl}&limit=${PAGE}&offset=${offset}`, {
+    // pl=fr : titres en français quand la traduction existe.
+    const res = await fetch(`${baseUrl}&pl=fr&limit=${PAGE}&offset=${offset}`, {
       signal,
       headers: { Accept: "application/json" },
     });

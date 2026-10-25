@@ -1,3 +1,5 @@
+import type { DisplayMode } from "../data/types";
+
 type RGB = [number, number, number];
 
 /** Stops de couleur du plus bas (vallée) au plus haut (haute montagne). */
@@ -33,3 +35,17 @@ export function altitudeColor(elevation: number): RGB {
 }
 
 export const LEGEND_STOPS = STOPS;
+
+/** Rouge foncé pour les secteurs au-dessus de la limite en mode `highlight`. */
+export const ABOVE_COLOR: RGB = [120, 20, 28];
+
+/** Couleur d'un marqueur, identique sur la carte et dans la liste. */
+export function markerColor(
+  elevation: number,
+  mode: DisplayMode,
+  maxAltitude: number,
+): RGB {
+  return mode === "highlight" && elevation > maxAltitude
+    ? ABOVE_COLOR
+    : altitudeColor(elevation);
+}

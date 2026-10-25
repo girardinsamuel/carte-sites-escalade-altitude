@@ -2,7 +2,7 @@ import { IconLayer } from "@deck.gl/layers";
 import { DataFilterExtension, type DataFilterExtensionProps } from "@deck.gl/extensions";
 import type { PickingInfo } from "@deck.gl/core";
 import type { DisplayMode, Sector } from "../data/types";
-import { altitudeColor } from "./altitudeColor";
+import { markerColor } from "./altitudeColor";
 
 const svgUri = (body: string) =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
@@ -29,8 +29,6 @@ const MTN_ICON = mkIcon(MTN_SVG);
 
 const dataFilter = new DataFilterExtension({ filterSize: 1 });
 
-/** Rouge foncé pour les secteurs au-dessus de la limite en mode `highlight`. */
-const DARK_RED: [number, number, number] = [120, 20, 28];
 const ALT_MAX = 1_000_000;
 
 interface Options {
@@ -58,10 +56,7 @@ export function sectorLayer({ sectors, maxAltitude, mode, onClick, onHover }: Op
     getIcon: (d) =>
       d.kind === "via_ferrata" ? VF_ICON : d.kind === "mountain" ? MTN_ICON : PIN_ICON,
     getColor: (d) => {
-      const [r, g, b] =
-        mode === "highlight" && d.elevation > maxAltitude
-          ? DARK_RED
-          : altitudeColor(d.elevation);
+      const [r, g, b] = markerColor(d.elevation, mode, maxAltitude);
       return [r, g, b, 255];
     },
     getSize: 30,
