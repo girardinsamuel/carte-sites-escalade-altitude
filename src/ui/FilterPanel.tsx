@@ -28,6 +28,18 @@ function Badge({ color, children }: { color: keyof typeof BADGE; children: React
   );
 }
 
+/** Nombre d'itinéraires sous / au-dessus de l'altitude limite. */
+export type SplitCount = { below: number; above: number };
+
+function SplitCountLine({ count }: { count: SplitCount }) {
+  return (
+    <span className="block text-[10px] font-normal tabular-nums text-white/40">
+      {count.below + count.above} au total : {count.below} sous la limite sélectionnée /{" "}
+      {count.above} au-dessus de la limite sélectionnée
+    </span>
+  );
+}
+
 export interface FilterPanelProps {
   view: ViewMode;
   onViewChange: (v: ViewMode) => void;
@@ -43,7 +55,7 @@ export interface FilterPanelProps {
   /** Exclut les itinéraires rocher HM de cotation globale < AD+. */
   excludeEasyRating: boolean;
   onExcludeEasyRatingChange: (v: boolean) => void;
-  shortRopeCounts: { title: number; rating: number };
+  shortRopeCounts: { title: SplitCount; rating: SplitCount };
   franceOnly: boolean;
   onFranceOnlyChange: (v: boolean) => void;
   selectedDeps: string[];
@@ -267,8 +279,8 @@ export function FilterPanel({
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-white/20 bg-white/5 accent-sky-500"
               />
               <span>
-                Titre : arête, couloir, voie normale, traversée…{" "}
-                <span className="text-white/35">{shortRopeCounts.title}</span>
+                Titre : arête, couloir, voie normale, traversée…
+                <SplitCountLine count={shortRopeCounts.title} />
               </span>
             </label>
             <label className="flex items-start gap-2 text-xs font-medium text-white/80">
@@ -279,8 +291,8 @@ export function FilterPanel({
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-white/20 bg-white/5 accent-sky-500"
               />
               <span>
-                Cotation globale &lt; AD+{" "}
-                <span className="text-white/35">{shortRopeCounts.rating}</span>
+                Cotation globale &lt; AD+
+                <SplitCountLine count={shortRopeCounts.rating} />
               </span>
             </label>
           </div>

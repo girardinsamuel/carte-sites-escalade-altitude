@@ -51,17 +51,19 @@ export default function App() {
     return m;
   }, [sectors]);
 
-  // Nombre d'itinéraires rocher HM concernés par chaque critère « corde courte ».
+  // Itinéraires rocher HM concernés par chaque critère « corde courte »,
+  // répartis de part et d'autre de l'altitude limite.
   const shortRopeCounts = useMemo(() => {
-    let title = 0;
-    let rating = 0;
+    const title = { below: 0, above: 0 };
+    const rating = { below: 0, above: 0 };
     for (const s of sectors) {
       if (s.kind !== "mountain") continue;
-      if (hasRidgeTitle(s)) title++;
-      if (hasEasyRating(s)) rating++;
+      const side = s.elevation > maxAltitude ? "above" : "below";
+      if (hasRidgeTitle(s)) title[side]++;
+      if (hasEasyRating(s)) rating[side]++;
     }
     return { title, rating };
-  }, [sectors]);
+  }, [sectors, maxAltitude]);
 
   const filteredSectors = useMemo(() => {
     let list = sectors.filter((s) => visibleKinds.includes(s.kind));
