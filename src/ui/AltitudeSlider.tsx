@@ -1,16 +1,26 @@
 import * as Slider from "@radix-ui/react-slider";
+import type { DisplayMode } from "../data/types";
+import { ABOVE_COLOR } from "../map/altitudeColor";
 
 interface Props {
   value: number;
   max: number;
+  mode: DisplayMode;
   onChange: (v: number) => void;
 }
 
-export function AltitudeSlider({ value, max, onChange }: Props) {
+const LABEL: Record<DisplayMode, string> = {
+  below: "Altitude maximale",
+  above: "Altitude minimale",
+  highlight: "Altitude limite",
+};
+
+export function AltitudeSlider({ value, max, mode, onChange }: Props) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-xs font-medium text-white/70">Altitude maximale</span>
+        <span className="text-xs font-medium text-white/70">{LABEL[mode]}</span>
         <span className="tabular-nums text-sm font-semibold text-white">
           {value} m
         </span>
@@ -23,11 +33,27 @@ export function AltitudeSlider({ value, max, onChange }: Props) {
         value={[value]}
         onValueChange={([v]) => onChange(v)}
       >
-        <Slider.Track className="relative h-1.5 grow rounded-full bg-white/20">
-          <Slider.Range className="absolute h-full rounded-full bg-sky-400" />
+        {/* La partie colorée suit le mode : sous le curseur, au-dessus, ou
+            les deux (au-dessus en rouge foncé, comme sur la carte). */}
+        <Slider.Track className="relative h-1.5 grow overflow-hidden rounded-full bg-white/20">
+          {mode === "above" ? (
+            <Slider.Range className="absolute h-full opacity-0" />
+          ) : (
+            <Slider.Range className="absolute h-full rounded-full bg-sky-400" />
+          )}
+          {mode !== "below" && (
+            <div
+              className={`absolute inset-y-0 right-0 rounded-full ${mode === "above" ? "bg-sky-400" : ""}`}
+              style={{
+                left: `${pct}%`,
+                background:
+                  mode === "highlight" ? `rgb(${ABOVE_COLOR.join(",")})` : undefined,
+              }}
+            />
+          )}
         </Slider.Track>
         <Slider.Thumb
-          aria-label="Altitude maximale"
+          aria-label={LABEL[mode]}
           className="block h-4 w-4 rounded-full bg-white shadow-md ring-2 ring-sky-400 transition focus:outline-none focus-visible:ring-4"
         />
       </Slider.Root>

@@ -222,6 +222,7 @@ export function FilterPanel({
           <div className="mt-3">
             <AltitudeSlider
               value={maxAltitude}
+              mode={mode}
               max={sliderMax}
               onChange={onAltitudeChange}
             />
@@ -311,7 +312,12 @@ export function FilterPanel({
 
         <div className="my-4 h-px bg-white/10" />
 
-        <AltitudeSlider value={maxAltitude} max={sliderMax} onChange={onAltitudeChange} />
+        <AltitudeSlider
+          value={maxAltitude}
+          max={sliderMax}
+          mode={mode}
+          onChange={onAltitudeChange}
+        />
 
         <p className="mt-3 text-xs tabular-nums text-white/70">{summary}</p>
 
