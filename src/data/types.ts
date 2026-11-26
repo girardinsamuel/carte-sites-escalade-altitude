@@ -25,6 +25,10 @@ export interface Sector {
   commune?: string;
   /** Nombre de voies (sites d'escalade, champ `routes_quantity`). */
   routes?: number;
+  /** Classement FFME du site naturel d'escalade rattaché (`npm run data:ffme`). */
+  ffmeClass?: string;
+  /** Identifiant de la fiche SNE FFME rattachée. */
+  ffmeId?: number;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;

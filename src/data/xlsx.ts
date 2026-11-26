@@ -191,7 +191,16 @@ const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill
   { title: "Massif", width: 30, value: (s) => s.massif },
   { title: "Département", width: 12, value: (s) => s.dep },
   // À remplir à la main (en-têtes jaunes), en fin de tableau.
-  { title: "Classement FFME", width: 17, value: () => undefined, fill: true },
+  // Pré-rempli quand le site est rattaché à une fiche FFME (lien vers la fiche).
+  {
+    title: "Classement FFME",
+    width: 20,
+    value: (s) =>
+      s.ffmeClass && s.ffmeId
+        ? { text: s.ffmeClass, url: `https://www.ffme.fr/sne-fiche/${s.ffmeId}/` }
+        : s.ffmeClass,
+    fill: true,
+  },
   { title: "Gestion", width: 18, value: () => undefined, fill: true },
   { title: "Equipeurs", width: 20, value: () => undefined, fill: true },
   { title: "Fréquentation guides", width: 21, value: () => undefined, fill: true, list: LEVELS },

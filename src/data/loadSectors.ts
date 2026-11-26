@@ -17,6 +17,8 @@ interface SectorFeatureCollection {
       massif?: string | null;
       commune?: string | null;
       routes?: number | null;
+      ffmeClass?: string | null;
+      ffmeId?: number | null;
     };
   }[];
 }
@@ -45,6 +47,8 @@ export async function loadLocal(): Promise<Sector[]> {
     massif: f.properties.massif ?? undefined,
     commune: f.properties.commune ?? undefined,
     routes: f.properties.routes ?? undefined,
+    ffmeClass: f.properties.ffmeClass ?? undefined,
+    ffmeId: f.properties.ffmeId ?? undefined,
   }));
 }
 
@@ -68,7 +72,14 @@ export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Secto
     if (!p) return s;
     const withCommune = { ...s, commune: p.commune };
     return s.kind === "climbing"
-      ? { ...withCommune, rating: p.rating, orientations: p.orientations, routes: p.routes }
+      ? {
+          ...withCommune,
+          rating: p.rating,
+          orientations: p.orientations,
+          routes: p.routes,
+          ffmeClass: p.ffmeClass,
+          ffmeId: p.ffmeId,
+        }
       : withCommune;
   });
 }

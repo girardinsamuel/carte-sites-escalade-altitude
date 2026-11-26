@@ -7,11 +7,12 @@
 //  - commune (France) : géocodage inverse via geo.api.gouv.fr
 // Usage : npm run data
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import proj4 from "proj4";
 import departements from "../src/data/departements.json" with { type: "json" };
+import { annotateSectorsFile } from "./ffme-match.mjs";
 
 const PAGE = 100;
 const OUT = fileURLToPath(new URL("../public/data/sectors.geojson", import.meta.url));
@@ -272,6 +273,15 @@ async function main() {
     `✓ ${features.length} sites écrits (${count("climbing")} escalade, ` +
       `${count("via_ferrata")} via ferrata, ${count("mountain")} rocher haute montagne) → ${OUT}`,
   );
+
+  // Classement FFME : réappliqué depuis le cache de `npm run data:ffme`, s'il existe.
+  try {
+    const cache = fileURLToPath(new URL("./data/ffme-sne.json", import.meta.url));
+    const { sites } = JSON.parse(await readFile(cache, "utf8"));
+    await annotateSectorsFile(sites);
+  } catch {
+    console.log("  (pas de cache FFME : lancer `npm run data:ffme` pour le classement FFME)");
+  }
 }
 
 main().catch((e) => {
