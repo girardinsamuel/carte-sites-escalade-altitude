@@ -8,15 +8,14 @@ import { assignRegions, REGIONS, type Region } from "./regions";
  * par grande région, avec les mêmes colonnes que la liste / l'export CSV.
  */
 
-type Value = string | number | undefined;
+/** Texte, nombre, ou lien cliquable (texte affiché + URL). */
+type Value = string | number | { text: string; url: string } | undefined;
 interface Sheet {
   name: string;
   header: string[];
   rows: Value[][];
   /** Largeur des colonnes (en caractères). */
   widths: number[];
-  /** Index de la colonne contenant des URL (lien cliquable). */
-  linkCol?: number;
   /** Colonnes à remplir à la main (en-tête mis en évidence). */
   fillCols?: number[];
   /** Listes déroulantes : index de colonne → valeurs proposées. */
@@ -43,13 +42,15 @@ function colName(i: number): string {
   return s;
 }
 
-function cellXml(v: Value, ref: string, style: number, link: boolean): string {
+const formulaStr = (v: string) => `"${v.replace(/"/g, '""')}"`;
+
+function cellXml(v: Value, ref: string, style: number): string {
   const s = style ? ` s="${style}"` : "";
   if (v == null || v === "") return "";
   if (typeof v === "number") return `<c r="${ref}"${s}><v>${v}</v></c>`;
-  if (link) {
-    const u = esc(v.replace(/"/g, '""'));
-    return `<c r="${ref}" s="2" t="str"><f>HYPERLINK("${u}")</f><v>${esc(v)}</v></c>`;
+  if (typeof v === "object") {
+    const f = `HYPERLINK(${formulaStr(v.url)},${formulaStr(v.text)})`;
+    return `<c r="${ref}" s="2" t="str"><f>${esc(f)}</f><v>${esc(v.text)}</v></c>`;
   }
   return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
 }
@@ -57,13 +58,13 @@ function cellXml(v: Value, ref: string, style: number, link: boolean): string {
 /** Lignes couvertes par les listes déroulantes (marge pour des ajouts). */
 const LIST_EXTRA_ROWS = 500;
 
-function sheetXml({ header, rows, widths, linkCol, fillCols = [], lists = [] }: Sheet): string {
+function sheetXml({ header, rows, widths, fillCols = [], lists = [] }: Sheet): string {
   const last = colName(header.length - 1);
   const lines = [header, ...rows].map((row, r) => {
     const cells = row
       .map((v, c) => {
         const style = r === 0 ? (fillCols.includes(c) ? 3 : 1) : 0;
-        return cellXml(v, `${colName(c)}${r + 1}`, style, r > 0 && c === linkCol);
+        return cellXml(v, `${colName(c)}${r + 1}`, style);
       })
       .join("");
     return `<row r="${r + 1}">${cells}</row>`;
@@ -181,29 +182,25 @@ export const LEVELS = ["Nulle", "Faible", "Moyen", "Fort"];
 
 /** Colonnes des onglets de sites : en-tête, largeur, valeur. */
 const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill?: boolean; list?: string[] }[] = [
-  { title: "Nom du site", width: 36, value: (s) => s.name },
+  { title: "Nom du site", width: 36, value: (s) => ({ text: s.name, url: s.url }) },
   { title: "Commune", width: 22, value: (s) => s.commune },
   { title: "Altitude", width: 10, value: (s) => s.elevation },
-  { title: "Classement FFME", width: 17, value: () => undefined, fill: true },
   { title: "Nb de voies", width: 12, value: (s) => s.routes },
   { title: "Niveau", width: 14, value: (s) => s.rating },
+  { title: "Type", width: 12, value: (s) => KIND_SHORT[s.kind] },
+  { title: "Massif", width: 30, value: (s) => s.massif },
+  { title: "Département", width: 12, value: (s) => s.dep },
+  // À remplir à la main (en-têtes jaunes), en fin de tableau.
+  { title: "Classement FFME", width: 17, value: () => undefined, fill: true },
   { title: "Gestion", width: 18, value: () => undefined, fill: true },
   { title: "Equipeurs", width: 20, value: () => undefined, fill: true },
   { title: "Fréquentation guides", width: 21, value: () => undefined, fill: true, list: LEVELS },
   { title: "Intérêt pour DE", width: 16, value: () => undefined, fill: true, list: LEVELS },
-  { title: "Type", width: 12, value: (s) => KIND_SHORT[s.kind] },
-  { title: "Orientation", width: 12, value: (s) => s.orientations?.join(" ") },
-  { title: "Massif", width: 30, value: (s) => s.massif },
-  { title: "Département", width: 12, value: (s) => s.dep },
-  { title: "Latitude", width: 11, value: (s) => Number(s.lat.toFixed(5)) },
-  { title: "Longitude", width: 11, value: (s) => Number(s.lon.toFixed(5)) },
-  { title: "Lien camptocamp", width: 44, value: (s) => s.url },
 ];
 
 const SITE_SHEET = {
   header: COLUMNS.map((c) => c.title),
   widths: COLUMNS.map((c) => c.width),
-  linkCol: COLUMNS.findIndex((c) => c.title === "Lien camptocamp"),
   fillCols: COLUMNS.flatMap((c, i) => (c.fill ? [i] : [])),
   lists: COLUMNS.flatMap((c, i) => (c.list ? [{ col: i, values: c.list }] : [])),
 };

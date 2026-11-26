@@ -49,12 +49,11 @@ Grand-Ouest - Nord »), sinon « Reste de l'Europe ». L'outre-mer a son propre
 onglet ; les autres sites hors d'Europe ne sont pas exportés (leur nombre figure
 dans la synthèse).
 
-Colonnes des onglets : Nom du site, Commune, Altitude, Classement FFME, Nb de
-voies, Niveau, Gestion, Equipeurs, Fréquentation guides, Intérêt pour DE, puis
-les colonnes de la liste (type, orientation, massif, département, coordonnées,
-lien). Classement FFME, Gestion, Equipeurs et les deux colonnes d'appréciation
-(liste déroulante Nulle / Faible / Moyen / Fort) sont à remplir à la main :
-camptocamp ne fournit pas ces informations.
+Colonnes des onglets : Nom du site (lien vers la fiche camptocamp), Commune,
+Altitude, Nb de voies, Niveau, Type, Massif, Département, puis les colonnes à
+remplir à la main (en-têtes jaunes) : Classement FFME, Gestion, Equipeurs,
+Fréquentation guides et Intérêt pour DE (ces deux dernières avec une liste
+déroulante Nulle / Faible / Moyen / Fort) ; camptocamp ne fournit pas ces informations.
 
 ## Build
 
