@@ -26,21 +26,66 @@ const norm = (s) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-const tokens = (s) => new Set(norm(s).split(" ").filter((t) => t.length > 1 && !STOP.has(t)));
+/** Racine simple : pluriel et féminin confondus (roches/roche/roch, fleurie/fleuri). */
+const stem = (t) => t.replace(/s$/, "").replace(/e$/, "");
 
-/** Ressemblance de deux noms, 0 à 1 (mots communs, ou nom inclus dans l'autre). */
-export function nameSim(a, b) {
-  const na = norm(a).replace(/ /g, "");
-  const nb = norm(b).replace(/ /g, "");
-  if (na && nb && (na === nb || (Math.min(na.length, nb.length) >= 5 && (na.includes(nb) || nb.includes(na)))))
-    return 1;
-  const ta = tokens(a);
-  const tb = tokens(b);
-  if (!ta.size || !tb.size) return 0;
-  let common = 0;
-  for (const t of ta) if (tb.has(t)) common++;
-  return common / Math.min(ta.size, tb.size);
+const tokens = (s) => [
+  ...new Set(
+    norm(s)
+      .split(" ")
+      .filter((t) => t.length > 1 && !STOP.has(t))
+      .map(stem),
+  ),
+];
+
+/** Distance d'édition ≤ 1 (une lettre ajoutée, retirée ou changée). */
+function oneEdit(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  return (
+    a.slice(i + 1) === b.slice(i + 1) || a.slice(i) === b.slice(i + 1) || a.slice(i + 1) === b.slice(i)
+  );
 }
+
+const sameToken = (x, y) => x === y || (x.length >= 5 && y.length >= 5 && oneEdit(x, y));
+
+/**
+ * Comparateur de noms, 0 à 1. Les mots sont pondérés par leur rareté dans
+ * `corpus` : « calanques », « gorges », « verdon »… comptent peu, un nom
+ * propre de falaise compte beaucoup. Tolère pluriels, féminins et fautes
+ * d'une lettre ; un nom inclus dans l'autre vaut 1 s'il contient un mot rare.
+ */
+export function makeNameSim(corpus = []) {
+  const df = new Map();
+  for (const n of corpus) for (const t of tokens(n)) df.set(t, (df.get(t) ?? 0) + 1);
+  const N = Math.max(corpus.length, 1);
+  const weight = (t) => Math.log(1 + N / (df.get(t) ?? 1));
+  const rare = Math.log(1 + N / 5);
+
+  return (a, b) => {
+    const ta = tokens(a);
+    const tb = tokens(b);
+    if (!ta.length || !tb.length) return 0;
+    const [small, large] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+    const na = norm(a).replace(/ /g, "");
+    const nb = norm(b).replace(/ /g, "");
+    const shortest = na.length <= nb.length ? na : nb;
+    if (
+      shortest.length >= 5 &&
+      (na.includes(nb) || nb.includes(na)) &&
+      Math.max(...small.map(weight)) >= rare
+    )
+      return 1;
+    const total = (ts) => ts.reduce((s, t) => s + weight(t), 0);
+    let common = 0;
+    for (const t of small) if (large.some((u) => sameToken(t, u))) common += weight(t);
+    return Math.min(1, common / Math.min(total(ta), total(tb)));
+  };
+}
+
+/** Comparateur sans pondération (tous les mots valent 1). */
+export const nameSim = makeNameSim();
 
 function distKm(lat1, lon1, lat2, lon2) {
   const r = Math.PI / 180;
@@ -53,11 +98,12 @@ function distKm(lat1, lon1, lat2, lon2) {
 const MAX_KM = 3;
 
 /**
- * Site FFME correspondant à un site camptocamp, ou null.
- * Accepté si les noms se ressemblent (proche), ou si les points sont quasi
- * confondus (secteur camptocamp d'une falaise FFME), ou même commune et proche.
+ * Site FFME correspondant à un site camptocamp, ou null : noms très proches
+ * jusqu'à 3 km, assez proches jusqu'à 1 km, ou en partie communs jusqu'à
+ * 400 m (secteurs d'une même falaise). Pas de rattachement à la seule
+ * proximité (deux falaises voisines ont souvent des classements différents).
  */
-export function bestMatch(site, ffme, grid) {
+export function bestMatch(site, grid, sim = nameSim) {
   let best = null;
   let bestScore = -Infinity;
   const ci = Math.floor(site.lat / 0.05);
@@ -67,15 +113,9 @@ export function bestMatch(site, ffme, grid) {
       for (const f of grid.get(`${i}|${j}`) ?? []) {
         const d = distKm(site.lat, site.lon, f.lat, f.lon);
         if (d > MAX_KM) continue;
-        const sim = Math.max(nameSim(site.name, f.name), site.commune ? 0 : 0);
-        const sameTown = site.commune && f.city && norm(site.commune) === norm(f.city);
-        const ok =
-          (sim >= 0.5 && d <= MAX_KM) ||
-          (sim > 0 && d <= 1) ||
-          d <= 0.15 ||
-          (sameTown && d <= 0.4);
-        if (!ok) continue;
-        const score = sim * 2 - d + (sameTown ? 0.3 : 0);
+        const s = sim(site.name, f.name);
+        if (!((s >= 0.75 && d <= MAX_KM) || (s >= 0.5 && d <= 1) || (s >= 0.35 && d <= 0.4))) continue;
+        const score = s * 2 - d;
         if (score > bestScore) {
           bestScore = score;
           best = f;
@@ -99,6 +139,10 @@ export async function annotateSectorsFile(ffmeSites) {
   const ffme = ffmeSites.filter((s) => s.type);
   const grid = buildGrid(ffme);
   const fc = JSON.parse(await readFile(SECTORS, "utf8"));
+  const sim = makeNameSim([
+    ...ffme.map((s) => s.name),
+    ...fc.features.filter((f) => f.properties.dep).map((f) => f.properties.name),
+  ]);
   let candidates = 0;
   let matched = 0;
   const used = new Set();
@@ -109,7 +153,7 @@ export async function annotateSectorsFile(ffmeSites) {
     if (p.kind !== "climbing" || !p.dep) continue;
     candidates++;
     const [lon, lat] = f.geometry.coordinates;
-    const m = bestMatch({ name: p.name, commune: p.commune, lat, lon }, ffme, grid);
+    const m = bestMatch({ name: p.name, lat, lon }, grid, sim);
     if (!m) continue;
     p.ffmeId = m.id;
     p.ffmeClass = m.type;
