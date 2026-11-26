@@ -186,7 +186,7 @@ export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Arr
         return [r.name, list.length, count(list, "climbing"), count(list, "via_ferrata"), count(list, "mountain"), detail];
       }),
       ["Total", kept.length, count(kept, "climbing"), count(kept, "via_ferrata"), count(kept, "mountain"), ""],
-      ...(outside ? [["Hors Europe (non exportés)", outside, undefined, undefined, undefined, "sites hors d'Europe, outre-mer compris"]] : []),
+      ...(outside ? [["Hors Europe (non exportés)", outside, undefined, undefined, undefined, "sites hors d'Europe (hors outre-mer)"]] : []),
     ],
   };
 

@@ -43,8 +43,9 @@ en un onglet par grande région (19 regroupements de massifs camptocamp, défini
 dans `src/data/regions.ts`), précédée d'un onglet « Synthèse » (nombre de sites
 par type et massifs inclus). Un site sans massif prend celui du site le plus
 proche (≤ 15 km), sinon une région selon son département (par défaut « France
-Grand-Ouest - Nord »), sinon « Reste de l'Europe ». Les sites hors d'Europe
-(outre-mer compris) ne sont pas exportés ; leur nombre figure dans la synthèse.
+Grand-Ouest - Nord »), sinon « Reste de l'Europe ». L'outre-mer a son propre
+onglet ; les autres sites hors d'Europe ne sont pas exportés (leur nombre figure
+dans la synthèse).
 
 ## Build
 

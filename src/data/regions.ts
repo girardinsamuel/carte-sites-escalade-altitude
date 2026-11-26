@@ -163,9 +163,15 @@ export const REGIONS: Region[] = [
   },
   {
     id: "france-est",
-    name: "France Est",
+    name: "Bourgogne - Champagne - Ardennes",
     massifs: [],
     deps: ["08", "10", "21", "51", "52", "58", "71", "89"],
+  },
+  {
+    id: "outre-mer",
+    name: "Outre-mer",
+    massifs: [],
+    // Rattachement par département : tout code commençant par 97 (cf. assignRegions).
   },
   {
     id: "europe",
@@ -221,7 +227,8 @@ const inEurope = (s: Sector) => s.lat >= 34 && s.lat <= 72 && s.lon >= -25 && s.
  * 2. sinon, par le massif du site le plus proche (≤ 15 km) ;
  * 3. sinon, par son département (France métropolitaine ; défaut : Grand-Ouest - Nord) ;
  * 4. sinon « Reste de l'Europe ».
- * Les sites hors d'Europe (outre-mer compris) n'ont pas de région : absents de la Map.
+ * Les départements d'outre-mer (97x) ont leur propre région ; les autres sites
+ * hors d'Europe n'ont pas de région : absents de la Map.
  *
  * `reference` : jeu complet servant au voisinage (pas seulement les sites exportés).
  */
@@ -253,6 +260,7 @@ export function assignRegions(rows: Sector[], reference: Sector[]): Map<number, 
   };
 
   const region = (s: Sector): Region | undefined => {
+    if (s.dep?.startsWith("97")) return BY_ID.get("outre-mer");
     if (!inEurope(s)) return undefined;
     return (
       (s.massif && BY_MASSIF.get(s.massif)) ||
