@@ -156,7 +156,13 @@ const LINK_COL = HEADER.length - 1;
 export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Array {
   const regionOf = assignRegions(rows, reference);
   const groups = new Map<Region, Sector[]>(REGIONS.map((r) => [r, []]));
-  for (const s of rows) groups.get(regionOf.get(s.id)!)!.push(s);
+  let outside = 0;
+  for (const s of rows) {
+    const r = regionOf.get(s.id);
+    if (r) groups.get(r)!.push(s);
+    else outside++;
+  }
+  const kept = rows.filter((s) => regionOf.has(s.id));
   const used = [...groups].filter(([, list]) => list.length);
 
   const count = (list: Sector[], k: SiteKind) => list.filter((s) => s.kind === k).length;
@@ -179,7 +185,8 @@ export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Arr
           .join(", ");
         return [r.name, list.length, count(list, "climbing"), count(list, "via_ferrata"), count(list, "mountain"), detail];
       }),
-      ["Total", rows.length, count(rows, "climbing"), count(rows, "via_ferrata"), count(rows, "mountain"), ""],
+      ["Total", kept.length, count(kept, "climbing"), count(kept, "via_ferrata"), count(kept, "mountain"), ""],
+      ...(outside ? [["Hors Europe (non exportés)", outside, undefined, undefined, undefined, "sites hors d'Europe, outre-mer compris"]] : []),
     ],
   };
 

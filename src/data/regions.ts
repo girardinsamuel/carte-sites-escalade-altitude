@@ -150,10 +150,27 @@ export const REGIONS: Region[] = [
     ],
   },
   {
-    id: "sud",
-    name: "Corse - Italie - Espagne",
+    id: "corse",
+    name: "Corse",
+    massifs: ["Corse"],
+    deps: ["2A", "2B"],
+  },
+  {
+    id: "france-ouest-nord",
+    name: "France Grand-Ouest - Nord",
+    massifs: ["Fontainebleau", "Oise"],
+    // Départements non listés ailleurs : rattachés ici par défaut.
+  },
+  {
+    id: "france-est",
+    name: "France Est",
+    massifs: [],
+    deps: ["08", "10", "21", "51", "52", "58", "71", "89"],
+  },
+  {
+    id: "europe",
+    name: "Reste de l'Europe",
     massifs: [
-      "Corse",
       "Sardaigne",
       "Sicile",
       "Apennins septentrionaux",
@@ -164,28 +181,10 @@ export const REGIONS: Region[] = [
       "Système Ibérique",
       "Sierra de Guadarrama",
       "Sierra de Gredos",
-    ],
-    deps: ["2A", "2B", "20"],
-  },
-  {
-    id: "france-autres",
-    name: "France - autres régions",
-    massifs: ["Fontainebleau", "Oise"],
-  },
-  {
-    id: "europe",
-    name: "Reste de l'Europe",
-    massifs: ["Peak District", "Lake District", "Tatras", "Les Carpathes"],
-  },
-  {
-    id: "monde",
-    name: "Reste du monde",
-    massifs: [
-      "Hautes Andes / Andes centrales",
-      "Sierras Pampeanas",
-      "Patagonie S",
-      "Patagonie N",
-      "Puna",
+      "Peak District",
+      "Lake District",
+      "Tatras",
+      "Les Carpathes",
     ],
   },
 ];
@@ -220,8 +219,9 @@ const inEurope = (s: Sector) => s.lat >= 34 && s.lat <= 72 && s.lon >= -25 && s.
  * Attribue une région à chaque site :
  * 1. par son massif camptocamp ;
  * 2. sinon, par le massif du site le plus proche (≤ 15 km) ;
- * 3. sinon, par son département (France) ;
- * 4. sinon France / Europe / monde.
+ * 3. sinon, par son département (France métropolitaine ; défaut : Grand-Ouest - Nord) ;
+ * 4. sinon « Reste de l'Europe ».
+ * Les sites hors d'Europe (outre-mer compris) n'ont pas de région : absents de la Map.
  *
  * `reference` : jeu complet servant au voisinage (pas seulement les sites exportés).
  */
@@ -252,14 +252,20 @@ export function assignRegions(rows: Sector[], reference: Sector[]): Map<number, 
     return best && BY_MASSIF.get(best.massif!);
   };
 
-  const out = new Map<number, Region>();
-  for (const s of rows) {
-    const r =
+  const region = (s: Sector): Region | undefined => {
+    if (!inEurope(s)) return undefined;
+    return (
       (s.massif && BY_MASSIF.get(s.massif)) ||
       nearest(s) ||
-      (s.dep && BY_DEP.get(s.dep)) ||
-      (s.dep ? BY_ID.get("france-autres") : inEurope(s) ? BY_ID.get("europe") : BY_ID.get("monde"))!;
-    out.set(s.id, r);
+      (s.dep && (BY_DEP.get(s.dep) ?? BY_ID.get("france-ouest-nord"))) ||
+      BY_ID.get("europe")
+    );
+  };
+
+  const out = new Map<number, Region>();
+  for (const s of rows) {
+    const r = region(s);
+    if (r) out.set(s.id, r);
   }
   return out;
 }
