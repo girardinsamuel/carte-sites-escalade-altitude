@@ -21,6 +21,10 @@ export interface Sector {
   orientations?: string[];
   /** Massif camptocamp (zone de type `range`). */
   massif?: string;
+  /** Commune (France uniquement, géocodage inverse au snapshot). */
+  commune?: string;
+  /** Nombre de voies (sites d'escalade, champ `routes_quantity`). */
+  routes?: number;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;

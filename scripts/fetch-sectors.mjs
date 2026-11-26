@@ -4,6 +4,7 @@
 //    cotation et orientation, absentes de la liste)
 //  - via ferrata      : itinéraires act=via_ferrata (altitude via route,
 //    sinon repli sur les waypoints associés)
+//  - commune (France) : géocodage inverse via geo.api.gouv.fr
 // Usage : npm run data
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -150,6 +151,7 @@ async function climbing() {
         compact({
           rating: ratingRange(d.climbing_rating_min, d.climbing_rating_max),
           orientations: d.orientations,
+          routes: d.routes_quantity,
         }),
       );
     } catch {
@@ -222,6 +224,31 @@ async function routesForActivity(activity, kind, label) {
   return out;
 }
 
+/**
+ * Commune (France, outre-mer compris) par géocodage inverse sur
+ * geo.api.gouv.fr — absente des données camptocamp.
+ */
+async function addCommunes(features) {
+  const fr = features.filter((f) => f.properties.dep);
+  let done = 0;
+  let failed = 0;
+  await pool(fr, 6, async (f) => {
+    const [lon, lat] = f.geometry.coordinates;
+    try {
+      const list = await getJsonRetry(
+        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lon}&fields=nom&format=json`,
+      );
+      if (list[0]?.nom) f.properties.commune = list[0].nom;
+    } catch {
+      failed++;
+    }
+    if (++done % 100 === 0 || done === fr.length)
+      process.stdout.write(`\r  communes : ${done}/${fr.length}…`);
+  });
+  process.stdout.write("\n");
+  if (failed) console.log(`  (${failed} communes non trouvées)`);
+}
+
 async function main() {
   const features = [
     ...(await climbing()),
@@ -232,6 +259,7 @@ async function main() {
       "rocher haute montagne",
     )),
   ];
+  await addCommunes(features);
   const fc = {
     type: "FeatureCollection",
     generated: new Date().toISOString(),

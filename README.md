@@ -26,11 +26,13 @@ npm run dev
 - `npm run data` — snapshot statique (`scripts/fetch-sectors.mjs`, reprojection
   EPSG:3857 → WGS84) : sites `climbing_outdoor`, via ferrata et rocher haute
   montagne, avec cotation, orientation et massif. Pour les sites d'escalade, la
-  cotation et l'orientation demandent une requête par site (~5 300) : compter
-  quelques minutes.
+  cotation, l'orientation et le nombre de voies demandent une requête par site
+  (~5 300) : compter quelques minutes. La commune des sites français vient de
+  [geo.api.gouv.fr](https://geo.api.gouv.fr) (géocodage inverse).
 - Le bouton **« Rafraîchir depuis camptocamp »** dans l'app réinterroge l'API en
   direct ; en cas d'échec (réseau / CORS), les données locales sont conservées.
-  La cotation et l'orientation des sites d'escalade sont alors reprises du snapshot.
+  La cotation, l'orientation, le nombre de voies et la commune sont alors repris
+  du snapshot.
 
 ## Vues
 
@@ -38,14 +40,21 @@ Carte, carte + liste ou liste seule. La liste suit les mêmes filtres et le mêm
 mode d'affichage que la carte ; recherche par nom ou massif, tri par colonne,
 export CSV, limitation à la zone visible de la carte (vue carte + liste).
 
-**Export tableur (XLSX)** : la liste affichée, avec les mêmes colonnes, répartie
-en un onglet par grande région (19 regroupements de massifs camptocamp, définis
-dans `src/data/regions.ts`), précédée d'un onglet « Synthèse » (nombre de sites
+**Export tableur (XLSX)** : la liste affichée, répartie en un onglet par grande
+région (20 regroupements de massifs camptocamp, définis dans
+`src/data/regions.ts`), précédée d'un onglet « Synthèse » (nombre de sites
 par type et massifs inclus). Un site sans massif prend celui du site le plus
 proche (≤ 15 km), sinon une région selon son département (par défaut « France
 Grand-Ouest - Nord »), sinon « Reste de l'Europe ». L'outre-mer a son propre
 onglet ; les autres sites hors d'Europe ne sont pas exportés (leur nombre figure
 dans la synthèse).
+
+Colonnes des onglets : Nom du site, Commune, Altitude, Classement FFME, Nb de
+voies, Niveau, Gestion, Equipeurs, Fréquentation guides, Intérêt pour DE, puis
+les colonnes de la liste (type, orientation, massif, département, coordonnées,
+lien). Classement FFME, Gestion, Equipeurs et les deux colonnes d'appréciation
+(liste déroulante Nulle / Faible / Moyen / Fort) sont à remplir à la main :
+camptocamp ne fournit pas ces informations.
 
 ## Build
 

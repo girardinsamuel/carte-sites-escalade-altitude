@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 import type { Sector, SiteKind } from "./types";
-import { HEADER, sectorValues } from "./csv";
+import { KIND_SHORT } from "./labels";
 import { assignRegions, REGIONS, type Region } from "./regions";
 
 /**
@@ -17,6 +17,10 @@ interface Sheet {
   widths: number[];
   /** Index de la colonne contenant des URL (lien cliquable). */
   linkCol?: number;
+  /** Colonnes à remplir à la main (en-tête mis en évidence). */
+  fillCols?: number[];
+  /** Listes déroulantes : index de colonne → valeurs proposées. */
+  lists?: { col: number; values: string[] }[];
 }
 
 const esc = (s: string) =>
@@ -50,10 +54,18 @@ function cellXml(v: Value, ref: string, style: number, link: boolean): string {
   return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
 }
 
-function sheetXml({ header, rows, widths, linkCol }: Sheet): string {
+/** Lignes couvertes par les listes déroulantes (marge pour des ajouts). */
+const LIST_EXTRA_ROWS = 500;
+
+function sheetXml({ header, rows, widths, linkCol, fillCols = [], lists = [] }: Sheet): string {
   const last = colName(header.length - 1);
   const lines = [header, ...rows].map((row, r) => {
-    const cells = row.map((v, c) => cellXml(v, `${colName(c)}${r + 1}`, r === 0 ? 1 : 0, r > 0 && c === linkCol)).join("");
+    const cells = row
+      .map((v, c) => {
+        const style = r === 0 ? (fillCols.includes(c) ? 3 : 1) : 0;
+        return cellXml(v, `${colName(c)}${r + 1}`, style, r > 0 && c === linkCol);
+      })
+      .join("");
     return `<row r="${r + 1}">${cells}</row>`;
   });
   const cols = widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
@@ -64,6 +76,21 @@ function sheetXml({ header, rows, widths, linkCol }: Sheet): string {
     `<cols>${cols}</cols>` +
     `<sheetData>${lines.join("")}</sheetData>` +
     `<autoFilter ref="A1:${last}${rows.length + 1}"/>` +
+    (lists.length
+      ? `<dataValidations count="${lists.length}">` +
+        lists
+          .map(({ col, values }) => {
+            const c = colName(col);
+            const formula = esc(`"${values.join(",")}"`);
+            return (
+              `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" ` +
+              `errorTitle="Valeur non prévue" error="Choisir : ${esc(values.join(", "))}" ` +
+              `sqref="${c}2:${c}${rows.length + 1 + LIST_EXTRA_ROWS}"><formula1>${formula}</formula1></dataValidation>`
+            );
+          })
+          .join("") +
+        `</dataValidations>`
+      : "") +
     `</worksheet>`
   );
 }
@@ -71,16 +98,19 @@ function sheetXml({ header, rows, widths, linkCol }: Sheet): string {
 const STYLES =
   `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
   `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
-  `<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font>` +
+  `<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font>` +
   `<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>` +
-  `<font><u/><sz val="11"/><color rgb="FF0563C1"/><name val="Calibri"/></font></fonts>` +
-  `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>` +
-  `<fill><patternFill patternType="solid"><fgColor rgb="FF1E293B"/><bgColor indexed="64"/></patternFill></fill></fills>` +
+  `<font><u/><sz val="11"/><color rgb="FF0563C1"/><name val="Calibri"/></font>` +
+  `<font><b/><sz val="11"/><color rgb="FF1E293B"/><name val="Calibri"/></font></fonts>` +
+  `<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>` +
+  `<fill><patternFill patternType="solid"><fgColor rgb="FF1E293B"/><bgColor indexed="64"/></patternFill></fill>` +
+  `<fill><patternFill patternType="solid"><fgColor rgb="FFFCD34D"/><bgColor indexed="64"/></patternFill></fill></fills>` +
   `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
   `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
-  `<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+  `<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
   `<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>` +
-  `<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>` +
+  `<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+  `<xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>` +
   `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>` +
   `</styleSheet>`;
 
@@ -146,8 +176,37 @@ export function buildWorkbook(sheets: Sheet[]): Uint8Array {
   return zipSync(files, { level: 6 });
 }
 
-const SITE_WIDTHS = [36, 12, 12, 14, 12, 30, 12, 11, 11, 44];
-const LINK_COL = HEADER.length - 1;
+/** Choix proposés pour les colonnes d'appréciation. */
+export const LEVELS = ["Nulle", "Faible", "Moyen", "Fort"];
+
+/** Colonnes des onglets de sites : en-tête, largeur, valeur. */
+const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill?: boolean; list?: string[] }[] = [
+  { title: "Nom du site", width: 36, value: (s) => s.name },
+  { title: "Commune", width: 22, value: (s) => s.commune },
+  { title: "Altitude", width: 10, value: (s) => s.elevation },
+  { title: "Classement FFME", width: 17, value: () => undefined, fill: true },
+  { title: "Nb de voies", width: 12, value: (s) => s.routes },
+  { title: "Niveau", width: 14, value: (s) => s.rating },
+  { title: "Gestion", width: 18, value: () => undefined, fill: true },
+  { title: "Equipeurs", width: 20, value: () => undefined, fill: true },
+  { title: "Fréquentation guides", width: 21, value: () => undefined, fill: true, list: LEVELS },
+  { title: "Intérêt pour DE", width: 16, value: () => undefined, fill: true, list: LEVELS },
+  { title: "Type", width: 12, value: (s) => KIND_SHORT[s.kind] },
+  { title: "Orientation", width: 12, value: (s) => s.orientations?.join(" ") },
+  { title: "Massif", width: 30, value: (s) => s.massif },
+  { title: "Département", width: 12, value: (s) => s.dep },
+  { title: "Latitude", width: 11, value: (s) => Number(s.lat.toFixed(5)) },
+  { title: "Longitude", width: 11, value: (s) => Number(s.lon.toFixed(5)) },
+  { title: "Lien camptocamp", width: 44, value: (s) => s.url },
+];
+
+const SITE_SHEET = {
+  header: COLUMNS.map((c) => c.title),
+  widths: COLUMNS.map((c) => c.width),
+  linkCol: COLUMNS.findIndex((c) => c.title === "Lien camptocamp"),
+  fillCols: COLUMNS.flatMap((c, i) => (c.fill ? [i] : [])),
+  lists: COLUMNS.flatMap((c, i) => (c.list ? [{ col: i, values: c.list }] : [])),
+};
 
 /**
  * Classeur des sites `rows` (dans leur ordre), répartis par grande région.
@@ -194,10 +253,8 @@ export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Arr
     summary,
     ...used.map(([r, list]) => ({
       name: r.name,
-      header: HEADER,
-      rows: list.map(sectorValues),
-      widths: SITE_WIDTHS,
-      linkCol: LINK_COL,
+      ...SITE_SHEET,
+      rows: list.map((s) => COLUMNS.map((c) => c.value(s))),
     })),
   ]);
 }

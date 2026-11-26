@@ -15,6 +15,8 @@ interface SectorFeatureCollection {
       rating?: string | null;
       orientations?: string[] | null;
       massif?: string | null;
+      commune?: string | null;
+      routes?: number | null;
     };
   }[];
 }
@@ -41,6 +43,8 @@ export async function loadLocal(): Promise<Sector[]> {
     rating: f.properties.rating ?? undefined,
     orientations: f.properties.orientations ?? undefined,
     massif: f.properties.massif ?? undefined,
+    commune: f.properties.commune ?? undefined,
+    routes: f.properties.routes ?? undefined,
   }));
 }
 
@@ -53,14 +57,18 @@ export async function refreshFromApi(
 }
 
 /**
- * La liste des waypoints ne fournit ni cotation ni orientation (une requête
- * par site serait nécessaire) : on les reprend du jeu précédent (snapshot).
+ * La liste des waypoints ne fournit ni cotation, ni orientation, ni nombre de
+ * voies (une requête par site serait nécessaire), et l'API ne donne pas la
+ * commune : on les reprend du jeu précédent (snapshot).
  */
 export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Sector[] {
   const prev = new Map(previous.map((s) => [s.id, s]));
   return fresh.map((s) => {
-    if (s.kind !== "climbing") return s;
     const p = prev.get(s.id);
-    return p ? { ...s, rating: p.rating, orientations: p.orientations } : s;
+    if (!p) return s;
+    const withCommune = { ...s, commune: p.commune };
+    return s.kind === "climbing"
+      ? { ...withCommune, rating: p.rating, orientations: p.orientations, routes: p.routes }
+      : withCommune;
   });
 }
