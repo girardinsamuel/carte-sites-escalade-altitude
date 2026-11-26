@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "data": "node scripts/fetch-sectors.mjs"
+    "data": "node scripts/fetch-sectors.mjs",
+    "data:ffme": "node scripts/fetch-ffme.mjs"
   },
   "dependencies": {
     "@deck.gl/core": "^9.0.38",
