@@ -38,6 +38,13 @@ Carte, carte + liste ou liste seule. La liste suit les mêmes filtres et le mêm
 mode d'affichage que la carte ; recherche par nom ou massif, tri par colonne,
 export CSV, limitation à la zone visible de la carte (vue carte + liste).
 
+**Export tableur (XLSX)** : la liste affichée, avec les mêmes colonnes, répartie
+en un onglet par grande région (19 regroupements de massifs camptocamp, définis
+dans `src/data/regions.ts`), précédée d'un onglet « Synthèse » (nombre de sites
+par type et massifs inclus). Un site sans massif prend celui du site le plus
+proche (≤ 15 km), sinon une région selon son département, sinon « Reste de
+l'Europe » / « Reste du monde ».
+
 ## Build
 
 ```bash
