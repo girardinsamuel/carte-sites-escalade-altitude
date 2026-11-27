@@ -19,6 +19,7 @@ interface SectorFeatureCollection {
       routes?: number | null;
       ffmeClass?: string | null;
       ffmeId?: number | null;
+      ffmeUnsure?: boolean | null;
     };
   }[];
 }
@@ -49,6 +50,7 @@ export async function loadLocal(): Promise<Sector[]> {
     routes: f.properties.routes ?? undefined,
     ffmeClass: f.properties.ffmeClass ?? undefined,
     ffmeId: f.properties.ffmeId ?? undefined,
+    ffmeUnsure: f.properties.ffmeUnsure ?? undefined,
   }));
 }
 
@@ -79,6 +81,7 @@ export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Secto
           routes: p.routes,
           ffmeClass: p.ffmeClass,
           ffmeId: p.ffmeId,
+          ffmeUnsure: p.ffmeUnsure,
         }
       : withCommune;
   });

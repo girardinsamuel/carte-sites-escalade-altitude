@@ -58,7 +58,8 @@ dans la synthèse).
 Colonnes des onglets : Nom du site (lien vers la fiche camptocamp), Commune,
 Altitude, Nb de voies, Niveau, Type, Massif, Département, puis les colonnes à
 remplir à la main (en-têtes jaunes) : Classement FFME (pré-rempli quand le
-site est rattaché à une fiche FFME), Gestion, Equipeurs,
+site est rattaché à une fiche FFME, suivi de « (?) » si le rattachement est à
+vérifier), Gestion, Equipeurs,
 Fréquentation guides et Intérêt pour DE (ces deux dernières avec une liste
 déroulante Nulle / Faible / Moyen / Fort) ; camptocamp ne fournit pas ces informations.
 

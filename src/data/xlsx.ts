@@ -191,14 +191,17 @@ const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill
   { title: "Massif", width: 30, value: (s) => s.massif },
   { title: "Département", width: 12, value: (s) => s.dep },
   // À remplir à la main (en-têtes jaunes), en fin de tableau.
-  // Pré-rempli quand le site est rattaché à une fiche FFME (lien vers la fiche).
+  // Pré-rempli quand le site est rattaché à une fiche FFME (lien vers la fiche) ;
+  // suivi de « (?) » quand le rattachement est à vérifier.
   {
     title: "Classement FFME",
     width: 20,
-    value: (s) =>
-      s.ffmeClass && s.ffmeId
-        ? { text: s.ffmeClass, url: `https://www.ffme.fr/sne-fiche/${s.ffmeId}/` }
-        : s.ffmeClass,
+    value: (s) => {
+      if (!s.ffmeClass) return undefined;
+      // « (?) » : rattachement moins sûr, à vérifier sur la fiche FFME.
+      const text = s.ffmeUnsure ? `${s.ffmeClass} (?)` : s.ffmeClass;
+      return s.ffmeId ? { text, url: `https://www.ffme.fr/sne-fiche/${s.ffmeId}/` } : text;
+    },
     fill: true,
   },
   { title: "Gestion", width: 18, value: () => undefined, fill: true },

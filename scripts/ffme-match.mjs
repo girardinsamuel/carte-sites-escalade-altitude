@@ -1,6 +1,7 @@
 // Rattache les sites camptocamp aux sites naturels d'escalade FFME
 // (scripts/data/ffme-sne.json) : proximité GPS + ressemblance des noms.
-// Ajoute à chaque site rattaché : ffmeId, ffmeClass (classement FFME).
+// Ajoute à chaque site rattaché : ffmeId, ffmeClass (classement FFME), et
+// ffmeUnsure quand les noms ne se ressemblent qu'en partie (à vérifier).
 //
 // Usage direct (sans relire les fiches) : node scripts/ffme-match.mjs
 
@@ -96,6 +97,8 @@ function distKm(lat1, lon1, lat2, lon2) {
 }
 
 const MAX_KM = 3;
+/** En dessous de cette ressemblance de noms, le rattachement est marqué « à vérifier ». */
+export const SURE_SIM = 0.75;
 
 /**
  * Site FFME correspondant à un site camptocamp, ou null : noms très proches
@@ -114,11 +117,11 @@ export function bestMatch(site, grid, sim = nameSim) {
         const d = distKm(site.lat, site.lon, f.lat, f.lon);
         if (d > MAX_KM) continue;
         const s = sim(site.name, f.name);
-        if (!((s >= 0.75 && d <= MAX_KM) || (s >= 0.5 && d <= 1) || (s >= 0.35 && d <= 0.4))) continue;
+        if (!((s >= SURE_SIM && d <= MAX_KM) || (s >= 0.5 && d <= 1) || (s >= 0.35 && d <= 0.4))) continue;
         const score = s * 2 - d;
         if (score > bestScore) {
           bestScore = score;
-          best = f;
+          best = { ...f, sim: s };
         }
       }
   return best;
@@ -145,11 +148,13 @@ export async function annotateSectorsFile(ffmeSites) {
   ]);
   let candidates = 0;
   let matched = 0;
+  let unsure = 0;
   const used = new Set();
   for (const f of fc.features) {
     const p = f.properties;
     delete p.ffmeId;
     delete p.ffmeClass;
+    delete p.ffmeUnsure;
     if (p.kind !== "climbing" || !p.dep) continue;
     candidates++;
     const [lon, lat] = f.geometry.coordinates;
@@ -157,13 +162,17 @@ export async function annotateSectorsFile(ffmeSites) {
     if (!m) continue;
     p.ffmeId = m.id;
     p.ffmeClass = m.type;
+    if (m.sim < SURE_SIM) {
+      p.ffmeUnsure = true;
+      unsure++;
+    }
     used.add(m.id);
     matched++;
   }
   await writeFile(SECTORS, JSON.stringify(fc));
   console.log(
     `✓ classement FFME : ${matched}/${candidates} sites d'escalade français rattachés ` +
-      `(${used.size}/${ffme.length} sites FFME utilisés) → ${SECTORS}`,
+      `dont ${unsure} à vérifier (${used.size}/${ffme.length} sites FFME utilisés) → ${SECTORS}`,
   );
 }
 

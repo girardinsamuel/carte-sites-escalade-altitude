@@ -29,6 +29,8 @@ export interface Sector {
   ffmeClass?: string;
   /** Identifiant de la fiche SNE FFME rattachée. */
   ffmeId?: number;
+  /** Rattachement FFME moins sûr (noms partiellement communs) : à vérifier. */
+  ffmeUnsure?: boolean;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;
