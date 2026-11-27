@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "data": "node scripts/fetch-sectors.mjs",
-    "data:ffme": "node scripts/fetch-ffme.mjs"
+    "data:ffme": "node scripts/fetch-ffme.mjs",
+    "dev:api": "node --env-file-if-exists=.env scripts/dev-api.mjs"
   },
   "dependencies": {
     "@deck.gl/core": "^9.0.38",
@@ -20,6 +21,7 @@
     "@radix-ui/react-slider": "^1.2.3",
     "fflate": "^0.8.3",
     "maplibre-gl": "^4.7.1",
+    "pg": "^8.23.1",
     "proj4": "^2.15.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

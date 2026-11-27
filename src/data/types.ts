@@ -54,5 +54,5 @@ export type LoadProgress = (loaded: number, total: number) => void;
  */
 export type DisplayMode = "below" | "above" | "highlight";
 
-/** Vue principale : carte seule, carte + liste, ou liste seule. */
-export type ViewMode = "map" | "split" | "list";
+/** Vue principale : carte seule, carte + liste, liste seule, ou saisie collaborative. */
+export type ViewMode = "map" | "split" | "list" | "edit";

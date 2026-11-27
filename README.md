@@ -69,6 +69,29 @@ vérifier), Gestion, Equipeurs,
 Fréquentation guides et Intérêt pour DE (ces deux dernières avec une liste
 déroulante Nulle / Faible / Moyen / Fort) ; camptocamp ne fournit pas ces informations.
 
+## Saisie collaborative
+
+Vue **Saisie** (bouton à côté de Carte / Liste) : un tableau par grande région,
+comme le tableur, avec les colonnes Nom, Massif, Altitude, Nb voies,
+Difficultés, Classement, Gestion, Équipeurs, Fréquentation guides, Intérêt pour
+DE et Prénom (auteur de la dernière modification).
+
+- Nb voies, Difficultés et Classement sont pré-remplis (camptocamp, FFME, en
+  gris) et modifiables ; les autres colonnes se remplissent directement.
+- La recherche porte sur tous les onglets (nom, massif, commune).
+- Gros boutons pour appliquer Gestion, Équipeurs, Fréquentation guides ou
+  Intérêt pour DE aux sites cochés, ou à défaut à tous les résultats affichés.
+- Le prénom est demandé à la première ouverture (mémorisé dans le navigateur).
+
+Les saisies sont **partagées** : elles sont stockées dans une base Postgres
+(Neon, reliée au projet Vercel) via la fonction serveur `api/entries.js`, qui
+crée ses tables au premier appel et journalise chaque modification
+(`site_entries_history` : site, champ, ancienne / nouvelle valeur, prénom,
+date). La variable `DATABASE_URL` est fournie par l'intégration Neon de Vercel.
+
+En local : renseigner `DATABASE_URL` dans `.env`, puis lancer `npm run dev:api`
+à côté de `npm run dev` (Vite redirige `/api` vers ce serveur).
+
 ## Build
 
 ```bash
