@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DisplayMode, Sector, SiteKind } from "../data/types";
 import { GLOBAL_RATINGS, KIND_SHORT } from "../data/labels";
-import { downloadCsv } from "../data/csv";
+import { downloadBlob, downloadCsv } from "../data/csv";
 import { markerColor } from "../map/altitudeColor";
 import { KindGlyph } from "./KindGlyph";
 
@@ -112,6 +112,8 @@ const inBounds = (s: Sector, [w, so, e, n]: Bounds) =>
 interface Props {
   /** Sites après filtres type / département / corde courte. */
   sectors: Sector[];
+  /** Jeu complet (rattachement des sites sans massif pour l'export tableur). */
+  allSectors: Sector[];
   maxAltitude: number;
   mode: DisplayMode;
   /** Emprise visible de la carte (mode carte + liste), sinon null. */
@@ -125,6 +127,7 @@ interface Props {
 
 export function SectorList({
   sectors,
+  allSectors,
   maxAltitude,
   mode,
   mapBounds,
@@ -212,6 +215,21 @@ export function SectorList({
     downloadCsv(rows, `sites-escalade-${date}.csv`);
   };
 
+  const [exporting, setExporting] = useState(false);
+  const exportXlsx = async () => {
+    setExporting(true);
+    try {
+      const { sectorsToWorkbook } = await import("../data/xlsx");
+      const date = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([sectorsToWorkbook(rows, allSectors) as Uint8Array<ArrayBuffer>], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      downloadBlob(blob, `sites-escalade-par-massif-${date}.xlsx`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-950 text-white">
       <div className="flex h-11 shrink-0 items-center gap-1.5 border-b border-white/10 bg-slate-900 px-2">
@@ -273,6 +291,20 @@ export function SectorList({
             <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
           </svg>
           CSV
+        </button>
+
+        <button
+          type="button"
+          onClick={exportXlsx}
+          disabled={!rows.length || exporting}
+          title="Exporter la liste affichée en tableur (.xlsx), un onglet par grand massif"
+          className="flex h-7 shrink-0 items-center gap-1 rounded-md bg-white/5 px-2 text-[11px] font-medium text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <path d="M4 10h16M10 10v10" />
+          </svg>
+          XLSX
         </button>
 
         <button

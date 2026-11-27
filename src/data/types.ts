@@ -21,6 +21,16 @@ export interface Sector {
   orientations?: string[];
   /** Massif camptocamp (zone de type `range`). */
   massif?: string;
+  /** Commune (France uniquement, géocodage inverse au snapshot). */
+  commune?: string;
+  /** Nombre de voies (sites d'escalade, champ `routes_quantity`). */
+  routes?: number;
+  /** Classement FFME du site naturel d'escalade rattaché (`npm run data:ffme`). */
+  ffmeClass?: string;
+  /** Identifiant de la fiche SNE FFME rattachée. */
+  ffmeId?: number;
+  /** Rattachement FFME moins sûr (noms partiellement communs) : à vérifier. */
+  ffmeUnsure?: boolean;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;

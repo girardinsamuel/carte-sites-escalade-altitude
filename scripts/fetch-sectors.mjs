@@ -4,13 +4,15 @@
 //    cotation et orientation, absentes de la liste)
 //  - via ferrata      : itinéraires act=via_ferrata (altitude via route,
 //    sinon repli sur les waypoints associés)
+//  - commune (France) : géocodage inverse via geo.api.gouv.fr
 // Usage : npm run data
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import proj4 from "proj4";
 import departements from "../src/data/departements.json" with { type: "json" };
+import { annotateSectorsFile } from "./ffme-match.mjs";
 
 const PAGE = 100;
 const OUT = fileURLToPath(new URL("../public/data/sectors.geojson", import.meta.url));
@@ -150,6 +152,7 @@ async function climbing() {
         compact({
           rating: ratingRange(d.climbing_rating_min, d.climbing_rating_max),
           orientations: d.orientations,
+          routes: d.routes_quantity,
         }),
       );
     } catch {
@@ -222,6 +225,31 @@ async function routesForActivity(activity, kind, label) {
   return out;
 }
 
+/**
+ * Commune (France, outre-mer compris) par géocodage inverse sur
+ * geo.api.gouv.fr — absente des données camptocamp.
+ */
+async function addCommunes(features) {
+  const fr = features.filter((f) => f.properties.dep);
+  let done = 0;
+  let failed = 0;
+  await pool(fr, 6, async (f) => {
+    const [lon, lat] = f.geometry.coordinates;
+    try {
+      const list = await getJsonRetry(
+        `https://geo.api.gouv.fr/communes?lat=${lat}&lon=${lon}&fields=nom&format=json`,
+      );
+      if (list[0]?.nom) f.properties.commune = list[0].nom;
+    } catch {
+      failed++;
+    }
+    if (++done % 100 === 0 || done === fr.length)
+      process.stdout.write(`\r  communes : ${done}/${fr.length}…`);
+  });
+  process.stdout.write("\n");
+  if (failed) console.log(`  (${failed} communes non trouvées)`);
+}
+
 async function main() {
   const features = [
     ...(await climbing()),
@@ -232,6 +260,7 @@ async function main() {
       "rocher haute montagne",
     )),
   ];
+  await addCommunes(features);
   const fc = {
     type: "FeatureCollection",
     generated: new Date().toISOString(),
@@ -244,6 +273,15 @@ async function main() {
     `✓ ${features.length} sites écrits (${count("climbing")} escalade, ` +
       `${count("via_ferrata")} via ferrata, ${count("mountain")} rocher haute montagne) → ${OUT}`,
   );
+
+  // Classement FFME : réappliqué depuis le cache de `npm run data:ffme`, s'il existe.
+  try {
+    const cache = fileURLToPath(new URL("./data/ffme-sne.json", import.meta.url));
+    const { sites } = JSON.parse(await readFile(cache, "utf8"));
+    await annotateSectorsFile(sites);
+  } catch {
+    console.log("  (pas de cache FFME : lancer `npm run data:ffme` pour le classement FFME)");
+  }
 }
 
 main().catch((e) => {

@@ -247,6 +247,7 @@ export default function App() {
         >
           <SectorList
             sectors={filteredSectors}
+            allSectors={sectors}
             maxAltitude={maxAltitude}
             mode={mode}
             mapBounds={view === "split" ? mapBounds : null}
