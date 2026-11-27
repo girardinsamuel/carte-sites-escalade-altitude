@@ -332,7 +332,8 @@ async function rockRoutes(existingIds) {
     "https://api.camptocamp.org/routes?act=rock_climbing",
     "voies d'escalade",
   )) {
-    if (doc.activities?.includes("mountain_climbing")) continue;
+    // Déjà importées comme rocher haute montagne ou via ferrata.
+    if (doc.activities?.some((a) => a === "mountain_climbing" || a === "via_ferrata")) continue;
     const pt = point(doc.geometry?.geom);
     if (!pt) continue;
     const loc = doc.locales?.[0];
@@ -431,7 +432,7 @@ async function rockRoutes(existingIds) {
 }
 
 async function main() {
-  const features = [
+  let features = [
     ...(await climbing()),
     ...(await routesForActivity("via_ferrata", "via_ferrata", "via ferrata")),
     ...(await routesForActivity(
@@ -442,6 +443,9 @@ async function main() {
   ];
   const ids = new Set(features.filter((f) => f.properties.kind === "climbing").map((f) => f.properties.id));
   features.push(...(await rockRoutes(ids)));
+  // Un itinéraire à la fois via ferrata et rocher HM n'apparaît qu'une fois.
+  const seen = new Set();
+  features = features.filter((f) => !seen.has(f.properties.id) && seen.add(f.properties.id));
   await addCommunes(features);
   const fc = {
     type: "FeatureCollection",

@@ -29,6 +29,11 @@ npm run dev
   cotation, l'orientation et le nombre de voies demandent une requête par site
   (~5 300) : compter quelques minutes. La commune des sites français vient de
   [geo.api.gouv.fr](https://geo.api.gouv.fr) (géocodage inverse).
+  **Grandes voies** : les voies d'escalade des sommets et grandes parois
+  (`act=rock_climbing` : Mont Aiguille, Gerbier, Deux Sœurs…) sont regroupées
+  par sommet, avec le nombre de voies et la fourchette de cotations (~17 000
+  voies, ~2 300 sommets ; une requête par groupe). Les parois qui sont déjà des
+  sites d'escalade ne sont pas dupliquées. Compter 40 à 50 minutes au total.
 - `npm run data:ffme` — classement FFME (site sportif, terrain d'aventure…) des
   sites naturels d'escalade, lu sur les fiches de [ffme.fr](https://www.ffme.fr/ffme/carte-interactive/)
   (~2 300 fiches, une vingtaine de minutes ; reprise possible), mis en cache dans
@@ -36,7 +41,8 @@ npm run dev
   GPS et ressemblance des noms (`scripts/ffme-match.mjs`). `npm run data`
   réapplique ensuite ce rattachement depuis le cache.
 - Le bouton **« Rafraîchir depuis camptocamp »** dans l'app réinterroge l'API en
-  direct ; en cas d'échec (réseau / CORS), les données locales sont conservées.
+  direct ; en cas d'échec (réseau / CORS — l'API refuse les requêtes venant
+  d'autres domaines), les données locales sont conservées.
   La cotation, l'orientation, le nombre de voies et la commune sont alors repris
   du snapshot.
 
