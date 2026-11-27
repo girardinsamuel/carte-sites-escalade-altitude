@@ -9,7 +9,6 @@ import { SectorTooltip } from "../ui/SectorTooltip";
 import { CreditsWidget } from "../ui/CreditsWidget";
 import { sectorLayer } from "./sectorLayer";
 import { DeckOverlay } from "./DeckOverlay";
-import { useSectorDetails } from "./useSectorDetails";
 
 const KEY = import.meta.env.VITE_MAPTILER_KEY;
 export const hasMapKey = Boolean(KEY);
@@ -31,7 +30,6 @@ interface Props {
 type Marker = { sector: Sector; x: number; y: number };
 
 export function MapView({ sectors, maxAltitude, mode, flyTo, focus, onBoundsChange }: Props) {
-  const { details, request } = useSectorDetails();
   const [active, setActive] = useState<Marker | null>(null);
   const mapRef = useRef<MapRef>(null);
   // Secteur affiché : on ne repositionne l'infobulle qu'au changement de
@@ -51,9 +49,8 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, focus, onBoundsChan
       if (!obj || activeIdRef.current === obj.id) return;
       activeIdRef.current = obj.id;
       setActive({ sector: obj, x: info.x, y: info.y });
-      request(obj);
     },
-    [request],
+    [],
   );
 
   // Desktop : un clic sur la carte hors épingle ferme l'infobulle.
@@ -86,9 +83,8 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, focus, onBoundsChan
       activeIdRef.current = s.id;
       // Remonte sur le corps de l'épingle (ancrée par sa pointe).
       setActive({ sector: s, x: p.x, y: p.y - 18 });
-      request(s);
     },
-    [request],
+    [],
   );
 
   useEffect(() => {
@@ -153,7 +149,6 @@ export function MapView({ sectors, maxAltitude, mode, flyTo, focus, onBoundsChan
       {active && (
         <SectorTooltip
           sector={active.sector}
-          detail={details.get(active.sector.id)}
           x={active.x}
           y={active.y}
           pinned

@@ -153,6 +153,12 @@ async function climbing() {
           rating: ratingRange(d.climbing_rating_min, d.climbing_rating_max),
           orientations: d.orientations,
           routes: d.routes_quantity,
+          // Détails affichés dans l'infobulle (l'API camptocamp refuse les
+          // requêtes venant d'autres domaines : pas de chargement en direct).
+          types: d.climbing_outdoor_types,
+          rocks: d.rock_types,
+          styles: d.climbing_styles,
+          heightMax: d.height_max,
         }),
       );
     } catch {

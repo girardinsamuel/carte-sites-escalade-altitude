@@ -20,6 +20,10 @@ interface SectorFeatureCollection {
       ffmeClass?: string | null;
       ffmeId?: number | null;
       ffmeUnsure?: boolean | null;
+      types?: string[] | null;
+      rocks?: string[] | null;
+      styles?: string[] | null;
+      heightMax?: number | null;
     };
   }[];
 }
@@ -51,6 +55,10 @@ export async function loadLocal(): Promise<Sector[]> {
     ffmeClass: f.properties.ffmeClass ?? undefined,
     ffmeId: f.properties.ffmeId ?? undefined,
     ffmeUnsure: f.properties.ffmeUnsure ?? undefined,
+    types: f.properties.types ?? undefined,
+    rocks: f.properties.rocks ?? undefined,
+    styles: f.properties.styles ?? undefined,
+    heightMax: f.properties.heightMax ?? undefined,
   }));
 }
 
@@ -64,8 +72,9 @@ export async function refreshFromApi(
 
 /**
  * La liste des waypoints ne fournit ni cotation, ni orientation, ni nombre de
- * voies (une requête par site serait nécessaire), et l'API ne donne pas la
- * commune : on les reprend du jeu précédent (snapshot).
+ * voies, ni les détails de l'infobulle (une requête par site serait
+ * nécessaire), et l'API ne donne pas la commune : on les reprend du jeu
+ * précédent (snapshot).
  */
 export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Sector[] {
   const prev = new Map(previous.map((s) => [s.id, s]));
@@ -82,6 +91,10 @@ export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Secto
           ffmeClass: p.ffmeClass,
           ffmeId: p.ffmeId,
           ffmeUnsure: p.ffmeUnsure,
+          types: p.types,
+          rocks: p.rocks,
+          styles: p.styles,
+          heightMax: p.heightMax,
         }
       : withCommune;
   });
