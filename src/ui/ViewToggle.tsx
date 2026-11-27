@@ -4,6 +4,7 @@ const OPTIONS: { value: ViewMode; label: string; icon: string }[] = [
   { value: "map", label: "Carte", icon: "M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" },
   { value: "split", label: "Carte + liste", icon: "M3 5h18v14H3zM12 5v14M15 9h3M15 12h3M15 15h3" },
   { value: "list", label: "Liste", icon: "M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" },
+  { value: "edit", label: "Saisie", icon: "M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3zM13.5 8.5l3 3" },
 ];
 
 interface Props {

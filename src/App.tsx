@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapView, hasMapKey } from "./map/MapView";
 import { FilterPanel, type FilterPanelProps } from "./ui/FilterPanel";
 import { SectorList, type Bounds } from "./ui/SectorList";
+import { EditTable } from "./ui/EditTable";
 import { loadLocal, mergeClimbingDetails, refreshFromApi } from "./data/loadSectors";
 import { hasEasyRating, hasRidgeTitle } from "./data/shortRope";
 import type { DisplayMode, Sector, SiteKind, ViewMode } from "./data/types";
@@ -205,6 +206,12 @@ export default function App() {
 
   return (
     <div className="flex h-full w-full flex-col bg-slate-950 sm:flex-row">
+      {/* Saisie collaborative : par-dessus la carte, qui reste montée (caméra conservée). */}
+      {view === "edit" && (
+        <div className="fixed inset-0 z-40">
+          <EditTable sectors={filteredSectors} allSectors={sectors} onClose={() => setView("map")} />
+        </div>
+      )}
       {view === "list" && <FilterPanel docked {...panelProps} />}
 
       {/* La carte reste montée (caméra conservée), masquée en vue liste. */}
@@ -239,7 +246,7 @@ export default function App() {
         )}
       </div>
 
-      {view !== "map" && (
+      {(view === "split" || view === "list") && (
         <div
           className={`min-h-0 min-w-0 flex-1 border-white/10 ${
             view === "split" ? "border-t sm:w-[min(46rem,50%)] sm:flex-none sm:border-l sm:border-t-0" : ""
