@@ -1,5 +1,5 @@
 import proj4 from "proj4";
-import type { LoadProgress, Sector, SectorDetails, SiteKind } from "./types";
+import type { LoadProgress, Sector, SiteKind } from "./types";
 import { depCodeByName } from "./departements";
 
 const WAYPOINTS = "https://api.camptocamp.org/waypoints";
@@ -205,77 +205,4 @@ export async function fetchAllSites({
     fetchMountainRoutes({ signal, onProgress: track(2) }),
   ]);
   return [...climbing, ...vf, ...mountain];
-}
-
-interface C2cDetail {
-  climbing_outdoor_types?: string[] | null;
-  orientations?: string[] | null;
-  rock_types?: string[] | null;
-  climbing_styles?: string[] | null;
-  routes_quantity?: number | null;
-  climbing_rating_min?: string | null;
-  climbing_rating_max?: string | null;
-  height_max?: number | null;
-  via_ferrata_rating?: string | null;
-  global_rating?: string | null;
-  rock_free_rating?: string | null;
-  height_diff_up?: number | null;
-}
-
-async function fetchDetail(path: string, signal?: AbortSignal): Promise<C2cDetail> {
-  const res = await fetch(`https://api.camptocamp.org/${path}?l=fr`, {
-    signal,
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`API camptocamp: HTTP ${res.status}`);
-  return (await res.json()) as C2cDetail;
-}
-
-const EMPTY_DETAILS: SectorDetails = {
-  types: [],
-  orientations: [],
-  rockTypes: [],
-  climbingStyles: [],
-  routesQuantity: null,
-  ratingMin: null,
-  ratingMax: null,
-  heightMax: null,
-  viaFerrataRating: null,
-  globalRating: null,
-};
-
-/** Détail d'un secteur d'escalade (waypoint). */
-export async function fetchWaypointDetails(
-  id: number,
-  signal?: AbortSignal,
-): Promise<SectorDetails> {
-  const d = await fetchDetail(`waypoints/${id}`, signal);
-  return {
-    ...EMPTY_DETAILS,
-    types: d.climbing_outdoor_types ?? [],
-    orientations: d.orientations ?? [],
-    rockTypes: d.rock_types ?? [],
-    climbingStyles: d.climbing_styles ?? [],
-    routesQuantity: d.routes_quantity ?? null,
-    ratingMin: d.climbing_rating_min ?? null,
-    ratingMax: d.climbing_rating_max ?? null,
-    heightMax: d.height_max ?? null,
-  };
-}
-
-/** Détail d'un itinéraire (via ferrata, rocher haute montagne). */
-export async function fetchRouteDetails(
-  id: number,
-  signal?: AbortSignal,
-): Promise<SectorDetails> {
-  const d = await fetchDetail(`routes/${id}`, signal);
-  return {
-    ...EMPTY_DETAILS,
-    orientations: d.orientations ?? [],
-    rockTypes: d.rock_types ?? [],
-    heightMax: d.height_diff_up ?? null,
-    ratingMax: d.rock_free_rating ?? null,
-    viaFerrataRating: d.via_ferrata_rating ?? null,
-    globalRating: d.global_rating ?? null,
-  };
 }

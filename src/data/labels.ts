@@ -40,10 +40,12 @@ const STYLE_LABELS: Record<string, string> = {
   wall: "Mur",
   crack: "Fissure",
   pillar: "Pilier",
+  small_pillar: "Pilier",
+  crack_dihedral: "Fissure / dièdre",
 };
 
 export function styleLabel(v: string): string {
-  return STYLE_LABELS[v] ?? cap(v);
+  return STYLE_LABELS[v] ?? cap(v.replace(/_/g, " "));
 }
 
 export function cap(v: string): string {

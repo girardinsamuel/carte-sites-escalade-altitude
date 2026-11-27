@@ -31,25 +31,17 @@ export interface Sector {
   ffmeId?: number;
   /** Rattachement FFME moins sûr (noms partiellement communs) : à vérifier. */
   ffmeUnsure?: boolean;
+  /** Types de site camptocamp (single, multi, bloc, psicobloc, deep_water). */
+  types?: string[];
+  /** Types de rocher. */
+  rocks?: string[];
+  /** Styles d'escalade (slab, vertical, overhang…). */
+  styles?: string[];
+  /** Hauteur maximale des voies (m). */
+  heightMax?: number;
 }
 
 export type LoadProgress = (loaded: number, total: number) => void;
-
-/** Caractéristiques détaillées d'un secteur (endpoint /waypoints/{id}). */
-export interface SectorDetails {
-  types: string[]; // climbing_outdoor_types : single, multi, bloc, psicobloc, deep_water
-  orientations: string[]; // N, NE, E, SE, S, SW, W, NW
-  rockTypes: string[];
-  climbingStyles: string[];
-  routesQuantity: number | null;
-  ratingMin: string | null;
-  ratingMax: string | null;
-  heightMax: number | null;
-  /** Cotation via ferrata (K1–K6), si applicable. */
-  viaFerrataRating?: string | null;
-  /** Cotation globale d'alpinisme (F, PD, AD, D, TD…), si applicable. */
-  globalRating?: string | null;
-}
 
 /**
  * Mode d'affichage vis-à-vis de l'altitude limite :
