@@ -155,7 +155,7 @@ export async function annotateSectorsFile(ffmeSites) {
     delete p.ffmeId;
     delete p.ffmeClass;
     delete p.ffmeUnsure;
-    if (p.kind !== "climbing" || !p.dep) continue;
+    if ((p.kind !== "climbing" && p.kind !== "rock") || !p.dep) continue;
     candidates++;
     const [lon, lat] = f.geometry.coordinates;
     const m = bestMatch({ name: p.name, lat, lon }, grid, sim);
@@ -171,7 +171,7 @@ export async function annotateSectorsFile(ffmeSites) {
   }
   await writeFile(SECTORS, JSON.stringify(fc));
   console.log(
-    `✓ classement FFME : ${matched}/${candidates} sites d'escalade français rattachés ` +
+    `✓ classement FFME : ${matched}/${candidates} sites d'escalade et grandes voies français rattachés ` +
       `dont ${unsure} à vérifier (${used.size}/${ffme.length} sites FFME utilisés) → ${SECTORS}`,
   );
 }

@@ -4,6 +4,7 @@
 //    cotation et orientation, absentes de la liste)
 //  - via ferrata      : itinéraires act=via_ferrata (altitude via route,
 //    sinon repli sur les waypoints associés)
+//  - grandes voies    : itinéraires act=rock_climbing regroupés par sommet / paroi
 //  - commune (France) : géocodage inverse via geo.api.gouv.fr
 // Usage : npm run data
 
@@ -256,6 +257,147 @@ async function addCommunes(features) {
   if (failed) console.log(`  (${failed} communes non trouvées)`);
 }
 
+/** Clé de tri d'une cotation libre française (4c, 6a+, 7b…). */
+function freeKey(g) {
+  const m = /^(\d)([abc])?(\+)?/.exec(g ?? "");
+  if (!m) return null;
+  return Number(m[1]) * 10 + (m[2] ? "abc".indexOf(m[2]) * 3 : 0) + (m[3] ? 1 : 0);
+}
+
+const GLOBAL_ORDER = ["F", "F+", "PD-", "PD", "PD+", "AD-", "AD", "AD+", "D-", "D", "D+",
+  "TD-", "TD", "TD+", "ED-", "ED", "ED+", "ED4", "ED5", "ED6", "ED7"];
+
+/** Plus petite et plus grande valeur d'une liste selon une clé de tri. */
+function extent(values, key) {
+  const vs = values.filter((v) => v != null && key(v) != null);
+  if (!vs.length) return null;
+  vs.sort((a, b) => key(a) - key(b));
+  return ratingRange(vs[0], vs[vs.length - 1]);
+}
+
+const normName = (s) => norm(s ?? "").replace(/[^a-z0-9]+/g, " ").trim();
+
+function distKm([lon1, lat1], [lon2, lat2]) {
+  const r = Math.PI / 180;
+  const h =
+    Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Voies d'escalade (act=rock_climbing) regroupées par sommet / paroi : une
+ * entrée par point de départ commun (Mont Aiguille, Gerbier…), avec le nombre
+ * de voies et la fourchette de cotations. Les voies déjà importées comme
+ * rocher haute montagne, et les parois qui sont déjà des sites d'escalade,
+ * sont écartées.
+ */
+async function rockRoutes(existingIds) {
+  // 1. Voies, regroupées par nom de sommet (title_prefix) puis par proximité.
+  const groups = new Map();
+  let total = 0;
+  for await (const doc of paginate(
+    "https://api.camptocamp.org/routes?act=rock_climbing",
+    "voies d'escalade",
+  )) {
+    if (doc.activities?.includes("mountain_climbing")) continue;
+    const pt = point(doc.geometry?.geom);
+    if (!pt) continue;
+    const loc = doc.locales?.[0];
+    const prefix = loc?.title_prefix?.trim() || loc?.title?.trim();
+    if (!prefix) continue;
+    total++;
+    const key = normName(prefix);
+    const clusters = groups.get(key) ?? [];
+    let c = clusters.find((x) => distKm(x.pt, pt) <= 5);
+    if (!c) {
+      c = { name: prefix, pt, routes: [] };
+      clusters.push(c);
+      groups.set(key, clusters);
+    }
+    c.routes.push(doc);
+  }
+  const clusters = [...groups.values()].flat();
+  console.log(`  ${total} voies en ${clusters.length} groupes`);
+
+  // 2. Sommet principal de chaque groupe (fiche d'une de ses voies).
+  let done = 0;
+  await pool(clusters, 4, async (c) => {
+    try {
+      const d = await getJsonRetry(
+        `https://api.camptocamp.org/routes/${c.routes[0].document_id}?l=fr`,
+      );
+      const w = (d.associations?.waypoints ?? []).find(
+        (x) => String(x.document_id) === String(d.main_waypoint_id),
+      );
+      if (w) c.waypoint = w;
+    } catch {
+      // fiche indisponible : position et altitude tirées des voies
+    }
+    if (++done % 100 === 0 || done === clusters.length)
+      process.stdout.write(`\r  sommets des voies : ${done}/${clusters.length}…`);
+  });
+  process.stdout.write("\n");
+
+  // 3. Une entrée par sommet (plusieurs groupes peuvent partager le même).
+  const bySummit = new Map();
+  for (const c of clusters) {
+    const id = c.waypoint ? Number(c.waypoint.document_id) : c.routes[0].document_id;
+    if (existingIds.has(id)) continue; // déjà un site d'escalade
+    const prev = bySummit.get(id);
+    if (prev) prev.routes.push(...c.routes);
+    else bySummit.set(id, { ...c, id });
+  }
+
+  const out = [];
+  for (const g of bySummit.values()) {
+    const w = g.waypoint;
+    const wpt = w ? point(w.geometry?.geom) : null;
+    const pts = g.routes.map((r) => point(r.geometry.geom));
+    const [lon, lat] = wpt ?? [
+      pts.reduce((s, p) => s + p[0], 0) / pts.length,
+      pts.reduce((s, p) => s + p[1], 0) / pts.length,
+    ];
+    const elevs = g.routes.map((r) => r.elevation_max).filter((e) => typeof e === "number");
+    const elevation = Number(w?.elevation) || (elevs.length ? Math.max(...elevs) : null);
+    if (typeof elevation !== "number") continue;
+    const free = extent(g.routes.map((r) => r.rock_free_rating), freeKey);
+    const global = extent(g.routes.map((r) => r.global_rating), (v) => {
+      const i = GLOBAL_ORDER.indexOf(v);
+      return i < 0 ? null : i;
+    });
+    const heights = g.routes
+      .map((r) => r.height_diff_difficulties ?? r.height_diff_up)
+      .filter((h) => typeof h === "number");
+    const orient = [...new Set(g.routes.flatMap((r) => r.orientations ?? []))];
+    const ORDER = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    orient.sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
+    const types = [...new Set(g.routes.map((r) => r.climbing_outdoor_type).filter(Boolean))];
+    const wLoc = w?.locales?.find((l) => l.lang === "fr") ?? w?.locales?.[0];
+    const src = w ?? g.routes[0];
+    out.push(
+      feature(lon, lat, {
+        id: g.id,
+        kind: "rock",
+        name: wLoc?.title?.trim() || g.name,
+        elevation,
+        url: w
+          ? `https://www.camptocamp.org/waypoints/${g.id}`
+          : `https://www.camptocamp.org/routes/${g.id}`,
+        dep: depOf(src) ?? depOf(g.routes[0]),
+        massif: massifOf(src) ?? massifOf(g.routes[0]),
+        rating: free ?? global,
+        orientations: orient,
+        routes: g.routes.length,
+        heightMax: heights.length ? Math.max(...heights) : null,
+        types,
+      }),
+    );
+  }
+  console.log(`  ${out.length} sommets / parois avec voies d'escalade`);
+  return out;
+}
+
 async function main() {
   const features = [
     ...(await climbing()),
@@ -266,6 +408,8 @@ async function main() {
       "rocher haute montagne",
     )),
   ];
+  const ids = new Set(features.filter((f) => f.properties.kind === "climbing").map((f) => f.properties.id));
+  features.push(...(await rockRoutes(ids)));
   await addCommunes(features);
   const fc = {
     type: "FeatureCollection",
@@ -277,7 +421,8 @@ async function main() {
   const count = (k) => features.filter((f) => f.properties.kind === k).length;
   console.log(
     `✓ ${features.length} sites écrits (${count("climbing")} escalade, ` +
-      `${count("via_ferrata")} via ferrata, ${count("mountain")} rocher haute montagne) → ${OUT}`,
+      `${count("via_ferrata")} via ferrata, ${count("mountain")} rocher haute montagne, ` +
+      `${count("rock")} grandes voies) → ${OUT}`,
   );
 
   // Classement FFME : réappliqué depuis le cache de `npm run data:ffme`, s'il existe.

@@ -236,8 +236,8 @@ export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Arr
   const count = (list: Sector[], k: SiteKind) => list.filter((s) => s.kind === k).length;
   const summary: Sheet = {
     name: "Synthèse",
-    header: ["Onglet", "Sites", "Escalade", "Via ferrata", "Rocher HM", "Massifs camptocamp"],
-    widths: [32, 8, 10, 11, 11, 120],
+    header: ["Onglet", "Sites", "Escalade", "Grandes voies", "Via ferrata", "Rocher HM", "Massifs camptocamp"],
+    widths: [32, 8, 10, 13, 11, 11, 120],
     rows: [
       ...used.map(([r, list]) => {
         const massifs = new Map<string, number>();
@@ -251,10 +251,10 @@ export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Arr
           .map(([m, c]) => `${m} (${c})`)
           .concat(none ? [`sans massif (${none})`] : [])
           .join(", ");
-        return [r.name, list.length, count(list, "climbing"), count(list, "via_ferrata"), count(list, "mountain"), detail];
+        return [r.name, list.length, count(list, "climbing"), count(list, "rock"), count(list, "via_ferrata"), count(list, "mountain"), detail];
       }),
-      ["Total", kept.length, count(kept, "climbing"), count(kept, "via_ferrata"), count(kept, "mountain"), ""],
-      ...(outside ? [["Hors Europe (non exportés)", outside, undefined, undefined, undefined, "sites hors d'Europe (hors outre-mer)"]] : []),
+      ["Total", kept.length, count(kept, "climbing"), count(kept, "rock"), count(kept, "via_ferrata"), count(kept, "mountain"), ""],
+      ...(outside ? [["Hors Europe (non exportés)", outside, undefined, undefined, undefined, undefined, "sites hors d'Europe (hors outre-mer)"]] : []),
     ],
   };
 

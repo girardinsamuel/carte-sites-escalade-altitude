@@ -16,7 +16,7 @@ const BADGE = {
   violet: "bg-violet-500/20 text-violet-100 ring-violet-400/30",
 } as const;
 
-const ALL_KIND_ORDER: SiteKind[] = ["climbing", "via_ferrata", "mountain"];
+const ALL_KIND_ORDER: SiteKind[] = ["climbing", "rock", "via_ferrata", "mountain"];
 
 function Badge({ color, children }: { color: keyof typeof BADGE; children: ReactNode }) {
   return (
@@ -129,7 +129,7 @@ export function FilterPanel({
     );
 
   const kindBadge =
-    visibleKinds.length === 3
+    visibleKinds.length === ALL_KIND_ORDER.length
       ? null
       : visibleKinds.length === 0
         ? "Aucun type"
