@@ -80,6 +80,10 @@ DE et Prénom (auteur de la dernière modification).
 - Nb voies, Difficultés et Classement sont pré-remplis (camptocamp, FFME, en
   gris) et modifiables ; les autres colonnes se remplissent directement.
 - La recherche porte sur tous les onglets (nom, massif, commune).
+- Filtre **« Autour de »** : position GPS (« Ma position ») ou ville choisie,
+  rayon de 10, 25, 50 ou 100 km ; résultats triés par distance, combinables
+  avec la recherche, mémorisés dans le navigateur. Un clic sur un onglet
+  restreint les résultats à cette région.
 - Gros boutons pour appliquer Gestion, Équipeurs, Fréquentation guides ou
   Intérêt pour DE aux sites cochés, ou à défaut à tous les résultats affichés.
 - Le prénom est demandé à la première ouverture (mémorisé dans le navigateur).
