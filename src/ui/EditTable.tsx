@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Sector } from "../data/types";
 import { assignRegions, REGIONS } from "../data/regions";
+import { CitySearch } from "./CitySearch";
 import {
   CLASSEMENTS,
   LEVELS,
@@ -30,6 +31,41 @@ const norm = (s: string) =>
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
+
+const RADII = [10, 25, 50, 100];
+
+/** Centre du filtre « autour de » : position GPS ou ville choisie. */
+interface Around {
+  lat: number;
+  lon: number;
+  label: string;
+  radius: number;
+}
+const AROUND_KEY = "saisie.autour";
+function readAround(): Around | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(AROUND_KEY) ?? "null");
+    return v && Number.isFinite(v.lat) && Number.isFinite(v.lon) ? v : null;
+  } catch {
+    return null;
+  }
+}
+function storeAround(a: Around | null) {
+  try {
+    if (a) localStorage.setItem(AROUND_KEY, JSON.stringify(a));
+    else localStorage.removeItem(AROUND_KEY);
+  } catch {
+    // stockage indisponible : filtre non mémorisé
+  }
+}
+
+function distKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const r = Math.PI / 180;
+  const h =
+    Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+    Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
 
 /** Valeur affichée : saisie partagée si elle existe, sinon donnée d'origine. */
 function baseValue(s: Sector, f: EntryField): string {
@@ -311,6 +347,43 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
   const [status, setStatus] = useState<{ kind: "ok" | "error" | "saving"; text: string } | null>(null);
   const [tab, setTab] = useState<string>(REGIONS[0].id);
   const [query, setQuery] = useState("");
+  const [around, setAroundState] = useState<Around | null>(readAround);
+  const [filterTab, setFilterTab] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+  const setAround = (a: Around | null) => {
+    setAroundState(a);
+    storeAround(a);
+    setFilterTab(null);
+  };
+  const locate = () => {
+    if (!navigator.geolocation) {
+      setStatus({ kind: "error", text: "Géolocalisation non disponible sur cet appareil" });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocating(false);
+        setAround({
+          lat: p.coords.latitude,
+          lon: p.coords.longitude,
+          label: "ma position",
+          radius: around?.radius ?? 25,
+        });
+      },
+      (e) => {
+        setLocating(false);
+        setStatus({
+          kind: "error",
+          text:
+            e.code === e.PERMISSION_DENIED
+              ? "Position refusée : choisissez une ville à la place"
+              : "Position introuvable : choisissez une ville à la place",
+        });
+      },
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 },
+    );
+  };
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -350,27 +423,50 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
   }, [high, regionOf]);
 
   const q = norm(query.trim());
-  const results = useMemo(() => {
-    if (!q) return null;
+  // Distance au centre « autour de », pour filtrer, trier et afficher.
+  const dist = useMemo(() => {
+    if (!around) return null;
+    const m = new Map<number, number>();
+    for (const s of high) m.set(s.id, distKm(around.lat, around.lon, s.lat, s.lon));
+    return m;
+  }, [around, high]);
+  /** Résultats tous onglets confondus (recherche et / ou rayon), sinon null. */
+  const allResults = useMemo(() => {
+    if (!q && !around) return null;
     const out: Sector[] = [];
     for (const list of byRegion.values())
-      for (const s of list)
+      for (const s of list) {
+        if (around && dist!.get(s.id)! > around.radius) continue;
         if (
-          norm(s.name).includes(q) ||
-          (s.massif && norm(s.massif).includes(q)) ||
-          (s.commune && norm(s.commune).includes(q))
+          q &&
+          !(
+            norm(s.name).includes(q) ||
+            (s.massif && norm(s.massif).includes(q)) ||
+            (s.commune && norm(s.commune).includes(q))
+          )
         )
-          out.push(s);
+          continue;
+        out.push(s);
+      }
+    if (dist) out.sort((a, b) => dist.get(a.id)! - dist.get(b.id)!);
     return out;
-  }, [q, byRegion]);
+  }, [q, around, dist, byRegion]);
+  // Un onglet cliqué pendant un filtre restreint les résultats à cet onglet.
+  const results = useMemo(
+    () =>
+      allResults && filterTab
+        ? allResults.filter((s) => regionOf.get(s.id)?.id === filterTab)
+        : allResults,
+    [allResults, filterTab, regionOf],
+  );
   const resultCount = useMemo(() => {
     const m = new Map<string, number>();
-    for (const s of results ?? []) {
+    for (const s of allResults ?? []) {
       const id = regionOf.get(s.id)!.id;
       m.set(id, (m.get(id) ?? 0) + 1);
     }
     return m;
-  }, [results, regionOf]);
+  }, [allResults, regionOf]);
 
   const rows = results ?? byRegion.get(tab) ?? [];
   const tabs = REGIONS.filter((r) => (byRegion.get(r.id)?.length ?? 0) > 0);
@@ -387,7 +483,7 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
   }, []);
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
-  }, [tab, q]);
+  }, [tab, q, around, filterTab]);
 
   const start = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
   const end = Math.min(rows.length, Math.ceil((scrollTop + viewH) / ROW_H) + OVERSCAN);
@@ -450,7 +546,7 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
   const targetLabel = checked.size
     ? `${checked.size} site${checked.size > 1 ? "s" : ""} coché${checked.size > 1 ? "s" : ""}`
     : results
-      ? `tous les résultats (${rows.length})`
+      ? `tous les résultats affichés (${rows.length})`
       : `tout l'onglet (${rows.length})`;
   const bulk = (field: EntryField, label: string) => (v: string | null) => {
     if (!target.length) return;
@@ -506,23 +602,84 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
         </button>
       </div>
 
+      {/* Filtre « autour de » : position GPS ou ville, et rayon */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-slate-900/80 px-3 py-2 text-xs">
+        <span className="font-medium text-white/60">Autour de :</span>
+        <button
+          type="button"
+          onClick={locate}
+          disabled={locating}
+          className="flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+        >
+          📍 {locating ? "Localisation…" : "Ma position"}
+        </button>
+        <span className="text-white/40">ou</span>
+        <div className="w-56">
+          <CitySearch
+            onSelect={(p) =>
+              setAround({ lon: p.center[0], lat: p.center[1], label: p.name, radius: around?.radius ?? 25 })
+            }
+          />
+        </div>
+        <span className="ml-1 text-white/60">Rayon</span>
+        <div className="flex gap-1">
+          {RADII.map((r) => (
+            <button
+              key={r}
+              type="button"
+              disabled={!around}
+              onClick={() => around && setAround({ ...around, radius: r })}
+              className={`h-9 rounded-lg px-2.5 text-sm font-medium transition disabled:opacity-30 ${
+                around?.radius === r ? "bg-sky-500 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"
+              }`}
+            >
+              {r} km
+            </button>
+          ))}
+        </div>
+        {around && (
+          <span className="flex items-center gap-1 rounded-full bg-sky-500/20 py-1 pl-3 pr-1 text-sky-100 ring-1 ring-sky-400/30">
+            {around.radius} km autour de {around.label}
+            <button
+              type="button"
+              onClick={() => setAround(null)}
+              aria-label="Retirer le filtre de position"
+              className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-white/15"
+            >
+              ✕
+            </button>
+          </span>
+        )}
+      </div>
+
       {/* Onglets (régions) */}
       <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 bg-slate-900/60 px-2 py-1.5">
+        {allResults && (
+          <button
+            type="button"
+            onClick={() => setFilterTab(null)}
+            className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition ${
+              !filterTab ? "bg-sky-500 text-white" : "text-white/70 hover:bg-white/10"
+            }`}
+          >
+            Tous les onglets <span className="tabular-nums opacity-60">{allResults.length}</span>
+          </button>
+        )}
         {tabs.map((r) => {
-          const n = results ? (resultCount.get(r.id) ?? 0) : byRegion.get(r.id)!.length;
-          const active = !results && r.id === tab;
+          const n = allResults ? (resultCount.get(r.id) ?? 0) : byRegion.get(r.id)!.length;
+          const active = allResults ? r.id === filterTab : r.id === tab;
           return (
             <button
               key={r.id}
               type="button"
               onClick={() => {
-                setQuery("");
-                setTab(r.id);
+                if (allResults) setFilterTab(r.id);
+                else setTab(r.id);
               }}
               className={`shrink-0 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition ${
                 active
                   ? "bg-sky-500 text-white"
-                  : results && n === 0
+                  : allResults && n === 0
                     ? "text-white/25"
                     : "text-white/70 hover:bg-white/10"
               }`}
@@ -607,7 +764,13 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
                 sector={s}
                 entry={entries.get(s.id)}
                 checked={checked.has(s.id)}
-                regionName={results ? regionOf.get(s.id)?.name : undefined}
+                regionName={
+                  results
+                    ? [regionOf.get(s.id)?.name, dist && `${Math.round(dist.get(s.id)!)} km`]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : undefined
+                }
                 top={(start + i) * ROW_H}
                 onToggle={toggle}
                 onSave={saveCell}
