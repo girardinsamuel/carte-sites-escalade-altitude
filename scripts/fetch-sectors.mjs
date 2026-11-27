@@ -257,6 +257,38 @@ async function addCommunes(features) {
   if (failed) console.log(`  (${failed} communes non trouvées)`);
 }
 
+/** L'API refuse les pages au-delà de 10 000 résultats. */
+const MAX_RESULTS = 9000;
+const WORLD = [-20037508, -20037508, 20037508, 20037508]; // EPSG:3857
+
+/**
+ * Comme `paginate`, mais découpe la recherche en emprises (bbox) tant
+ * qu'une zone dépasse la limite de pagination de l'API. Sans doublon.
+ */
+async function* paginateByArea(baseUrl, label, bbox = WORLD, seen = new Set()) {
+  const url = `${baseUrl}&bbox=${bbox.map(Math.round).join(",")}`;
+  const { total = 0 } = await getJsonRetry(`${url}&limit=1`);
+  if (total === 0) return;
+  if (total > MAX_RESULTS) {
+    const [x0, y0, x1, y1] = bbox;
+    const xm = (x0 + x1) / 2;
+    const ym = (y0 + y1) / 2;
+    for (const q of [
+      [x0, y0, xm, ym],
+      [xm, y0, x1, ym],
+      [x0, ym, xm, y1],
+      [xm, ym, x1, y1],
+    ])
+      yield* paginateByArea(baseUrl, label, q, seen);
+    return;
+  }
+  for await (const doc of paginate(url, label)) {
+    if (seen.has(doc.document_id)) continue;
+    seen.add(doc.document_id);
+    yield doc;
+  }
+}
+
 /** Clé de tri d'une cotation libre française (4c, 6a+, 7b…). */
 function freeKey(g) {
   const m = /^(\d)([abc])?(\+)?/.exec(g ?? "");
@@ -296,7 +328,7 @@ async function rockRoutes(existingIds) {
   // 1. Voies, regroupées par nom de sommet (title_prefix) puis par proximité.
   const groups = new Map();
   let total = 0;
-  for await (const doc of paginate(
+  for await (const doc of paginateByArea(
     "https://api.camptocamp.org/routes?act=rock_climbing",
     "voies d'escalade",
   )) {
