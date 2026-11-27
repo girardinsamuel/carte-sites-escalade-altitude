@@ -71,7 +71,8 @@ déroulante Nulle / Faible / Moyen / Fort) ; camptocamp ne fournit pas ces infor
 
 ## Saisie collaborative
 
-Vue **Saisie** (bouton à côté de Carte / Liste) : un tableau par grande région,
+Vue **Saisie** (bouton à côté de Carte / Liste), limitée aux sites situés
+**au-dessus de 1 500 m** (`MIN_ALTITUDE` dans `src/ui/EditTable.tsx`) : un tableau par grande région,
 comme le tableur, avec les colonnes Nom, Massif, Altitude, Nb voies,
 Difficultés, Classement, Gestion, Équipeurs, Fréquentation guides, Intérêt pour
 DE et Prénom (auteur de la dernière modification).

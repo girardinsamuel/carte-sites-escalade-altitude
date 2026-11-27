@@ -15,6 +15,8 @@ import {
 const ROW_H = 40;
 const OVERSCAN = 10;
 const REFRESH_MS = 30_000;
+/** La saisie ne concerne que les sites au-dessus de cette altitude (m). */
+export const MIN_ALTITUDE = 1500;
 /** Au-delà, une modification groupée demande confirmation. */
 const CONFIRM_OVER = 20;
 
@@ -335,16 +337,17 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
     };
   }, [reload]);
 
-  const regionOf = useMemo(() => assignRegions(sectors, allSectors), [sectors, allSectors]);
+  const high = useMemo(() => sectors.filter((s) => s.elevation > MIN_ALTITUDE), [sectors]);
+  const regionOf = useMemo(() => assignRegions(high, allSectors), [high, allSectors]);
   const byRegion = useMemo(() => {
     const m = new Map<string, Sector[]>(REGIONS.map((r) => [r.id, []]));
-    for (const s of sectors) {
+    for (const s of high) {
       const r = regionOf.get(s.id);
       if (r) m.get(r.id)!.push(s);
     }
     for (const list of m.values()) list.sort((a, b) => collator.compare(a.name, b.name));
     return m;
-  }, [sectors, regionOf]);
+  }, [high, regionOf]);
 
   const q = norm(query.trim());
   const results = useMemo(() => {
@@ -481,7 +484,10 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
         >
           ← Carte
         </button>
-        <h1 className="text-sm font-semibold">Saisie collaborative</h1>
+        <h1 className="text-sm font-semibold">
+          Saisie collaborative{" "}
+          <span className="font-normal text-white/50">· sites au-dessus de {MIN_ALTITUDE} m</span>
+        </h1>
         <input
           type="search"
           value={query}
@@ -616,7 +622,7 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
         </div>
       </div>
       <div className="shrink-0 border-t border-white/10 bg-slate-900 px-3 py-1 text-[10px] text-white/40">
-        Valeurs grises : données d'origine (camptocamp, FFME), modifiables. Types de sites et pays selon
+        Sites au-dessus de {MIN_ALTITUDE} m uniquement. Valeurs grises : données d'origine (camptocamp, FFME), modifiables. Types de sites et pays selon
         les filtres de la carte. Saisies partagées, rafraîchies toutes les 30 s.
       </div>
     </div>
