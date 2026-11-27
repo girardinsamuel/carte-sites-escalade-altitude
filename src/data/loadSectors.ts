@@ -78,7 +78,10 @@ export async function refreshFromApi(
  */
 export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Sector[] {
   const prev = new Map(previous.map((s) => [s.id, s]));
-  return fresh.map((s) => {
+  // Les grandes voies (regroupement par sommet) ne sont produites que par le
+  // snapshot : on les conserve telles quelles.
+  const rock = previous.filter((s) => s.kind === "rock");
+  return [...rock, ...fresh.map((s) => {
     const p = prev.get(s.id);
     if (!p) return s;
     const withCommune = { ...s, commune: p.commune };
@@ -97,5 +100,5 @@ export function mergeClimbingDetails(fresh: Sector[], previous: Sector[]): Secto
           heightMax: p.heightMax,
         }
       : withCommune;
-  });
+  })];
 }

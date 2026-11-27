@@ -6,12 +6,14 @@ export const KIND_LABEL: Record<SiteKind, string> = {
   climbing: "Sites d'escalade",
   via_ferrata: "Via ferrata",
   mountain: "Rocher haute montagne",
+  rock: "Grandes voies (sommets, parois)",
 };
 
 export const KIND_SHORT: Record<SiteKind, string> = {
   climbing: "Escalade",
   via_ferrata: "Via ferrata",
   mountain: "Rocher HM",
+  rock: "Grandes voies",
 };
 
 /** Cotations globales camptocamp, de la plus facile à la plus difficile. */

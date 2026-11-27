@@ -5,6 +5,7 @@ import { cap, styleLabel, typeLabel } from "../data/labels";
 const KIND_TAG: Partial<Record<SiteKind, string>> = {
   via_ferrata: "Via ferrata",
   mountain: "Rocher haute montagne",
+  rock: "Grandes voies",
 };
 
 /** Couleur du badge de classement FFME. */
@@ -33,7 +34,7 @@ const MARGIN = 12;
 function DetailBody({ sector: s }: { sector: Sector }) {
   const stats = [
     s.routes ? `${s.routes} voies` : null,
-    s.rating ? (s.kind === "climbing" ? s.rating : `Cotation ${s.rating}`) : null,
+    s.rating ? (s.kind === "climbing" || s.kind === "rock" ? s.rating : `Cotation ${s.rating}`) : null,
     s.heightMax ? `${s.heightMax} m max` : null,
   ].filter(Boolean);
   const lines = [

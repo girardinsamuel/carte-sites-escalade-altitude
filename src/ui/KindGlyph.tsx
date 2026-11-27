@@ -7,6 +7,8 @@ const PATHS: Record<SiteKind, string> = {
     "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM8.6 6.6h6.8v1.7H8.6zm0 3.4h6.8v1.7H8.6z",
   mountain:
     "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM12 5.4l3.8 6.4H8.2z",
+  // Grandes voies : goutte + barre verticale évidée (une paroi).
+  rock: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM10.9 5.2h2.2v7.6h-2.2z",
 };
 
 /** Pictogramme du marqueur de carte pour un type de site. */

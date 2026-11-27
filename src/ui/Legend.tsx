@@ -32,6 +32,10 @@ export function Legend() {
           <KindGlyph kind="mountain" />
           Rocher haute montagne
         </span>
+        <span className="flex items-center gap-1">
+          <KindGlyph kind="rock" />
+          Grandes voies
+        </span>
       </div>
     </div>
   );

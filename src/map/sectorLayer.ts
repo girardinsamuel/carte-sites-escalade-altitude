@@ -22,10 +22,17 @@ const MTN_SVG = svgUri(
   '<path fill="#fff" fill-rule="evenodd" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM12 5.4l3.8 6.4H8.2z"/>',
 );
 
+// Grandes voies : goutte + barre verticale évidée (une paroi).
+const ROCK_SVG = svgUri(
+  '<path fill="#fff" fill-rule="evenodd" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM10.9 5.2h2.2v7.6h-2.2z"/>',
+);
+
 const mkIcon = (url: string) => ({ url, width: 48, height: 48, anchorY: 48, mask: true });
 const PIN_ICON = mkIcon(PIN_SVG);
 const VF_ICON = mkIcon(VF_SVG);
 const MTN_ICON = mkIcon(MTN_SVG);
+const ROCK_ICON = mkIcon(ROCK_SVG);
+const ICONS = { climbing: PIN_ICON, via_ferrata: VF_ICON, mountain: MTN_ICON, rock: ROCK_ICON };
 
 const dataFilter = new DataFilterExtension({ filterSize: 1 });
 
@@ -53,8 +60,7 @@ export function sectorLayer({ sectors, maxAltitude, mode, onClick, onHover }: Op
     id: "sectors",
     data: sectors,
     getPosition: (d) => [d.lon, d.lat, d.elevation],
-    getIcon: (d) =>
-      d.kind === "via_ferrata" ? VF_ICON : d.kind === "mountain" ? MTN_ICON : PIN_ICON,
+    getIcon: (d) => ICONS[d.kind] ?? PIN_ICON,
     getColor: (d) => {
       const [r, g, b] = markerColor(d.elevation, mode, maxAltitude);
       return [r, g, b, 255];

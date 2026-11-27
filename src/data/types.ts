@@ -1,5 +1,8 @@
-/** Type de site : escalade, via ferrata, ou rocher haute montagne. */
-export type SiteKind = "climbing" | "via_ferrata" | "mountain";
+/**
+ * Type de site : escalade, via ferrata, rocher haute montagne, ou grandes
+ * voies (voies d'escalade d'un sommet / d'une paroi, regroupées).
+ */
+export type SiteKind = "climbing" | "via_ferrata" | "mountain" | "rock";
 
 /** Un site (escalade ou via ferrata) prêt à afficher, dérivé de camptocamp. */
 export interface Sector {

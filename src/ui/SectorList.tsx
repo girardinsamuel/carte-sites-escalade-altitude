@@ -58,7 +58,7 @@ const COLUMNS: { key: SortKey | null; label: string; right?: boolean }[] = [
   { key: null, label: "" },
 ];
 
-const KIND_ORDER: SiteKind[] = ["climbing", "via_ferrata", "mountain"];
+const KIND_ORDER: SiteKind[] = ["climbing", "rock", "via_ferrata", "mountain"];
 const collator = new Intl.Collator("fr", { numeric: true, sensitivity: "base" });
 
 const norm = (s: string) =>

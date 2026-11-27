@@ -7,7 +7,7 @@ import { hasEasyRating, hasRidgeTitle } from "./data/shortRope";
 import type { DisplayMode, Sector, SiteKind, ViewMode } from "./data/types";
 import type { Place } from "./data/geocode";
 
-const ALL_KINDS: SiteKind[] = ["climbing", "via_ferrata", "mountain"];
+const ALL_KINDS: SiteKind[] = ["climbing", "rock", "via_ferrata", "mountain"];
 
 type Progress = { loaded: number; total: number } | null;
 
