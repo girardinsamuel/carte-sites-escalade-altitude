@@ -96,6 +96,9 @@ DE et Prénom (auteur de la dernière modification).
   recherche / rayon, édition ligne par ligne ou par lot, sauvegarde
   automatique), puis le prénom est demandé (mémorisé dans le navigateur).
   Le bouton « ? » rouvre ces explications.
+- Sur mobile, toute la page défile d'un bloc (recherche toujours visible en
+  haut), chaque site est une carte avec ses champs en deux colonnes, et le
+  panneau « Modifier en lot » est replié par défaut.
 
 Les saisies sont **partagées** : elles sont stockées dans une base Postgres
 (Neon, reliée au projet Vercel) via la fonction serveur `api/entries.js`, qui

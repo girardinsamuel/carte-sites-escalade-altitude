@@ -90,7 +90,7 @@ export function CitySearch({ onSelect }: Props) {
         onKeyDown={onKeyDown}
         placeholder="Rechercher une ville…"
         aria-label="Rechercher une ville"
-        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/40 focus:border-sky-400 focus:outline-none"
+        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-base text-white placeholder:text-white/40 sm:text-xs focus:border-sky-400 focus:outline-none"
       />
       {loading && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/40">
