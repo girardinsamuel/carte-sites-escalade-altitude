@@ -1,6 +1,7 @@
 import { strToU8, zipSync } from "fflate";
 import type { Sector, SiteKind } from "./types";
 import { KIND_SHORT } from "./labels";
+import type { Entry } from "./entries";
 import { assignRegions, REGIONS, type Region } from "./regions";
 
 /**
@@ -181,12 +182,25 @@ export function buildWorkbook(sheets: Sheet[]): Uint8Array {
 export const LEVELS = ["Nulle", "Faible", "Moyen", "Fort"];
 
 /** Colonnes des onglets de sites : en-tête, largeur, valeur. */
-const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill?: boolean; list?: string[] }[] = [
+/** Nombre si la saisie est numérique (tri / somme dans le tableur), sinon texte. */
+const num = (v: string) => (/^\d+$/.test(v) ? Number(v) : v);
+
+/**
+ * Colonnes des onglets de sites. `e` : saisie partagée de la vue Saisie ; elle
+ * remplace la donnée d'origine (camptocamp, FFME) quand elle existe.
+ */
+const COLUMNS: {
+  title: string;
+  width: number;
+  value: (s: Sector, e?: Entry) => Value;
+  fill?: boolean;
+  list?: string[];
+}[] = [
   { title: "Nom du site", width: 36, value: (s) => ({ text: s.name, url: s.url }) },
   { title: "Commune", width: 22, value: (s) => s.commune },
   { title: "Altitude", width: 10, value: (s) => s.elevation },
-  { title: "Nb de voies", width: 12, value: (s) => s.routes },
-  { title: "Niveau", width: 14, value: (s) => s.rating },
+  { title: "Nb de voies", width: 12, value: (s, e) => (e?.routes ? num(e.routes) : s.routes) },
+  { title: "Niveau", width: 14, value: (s, e) => e?.rating ?? s.rating },
   { title: "Type", width: 12, value: (s) => KIND_SHORT[s.kind] },
   { title: "Massif", width: 30, value: (s) => s.massif },
   { title: "Département", width: 12, value: (s) => s.dep },
@@ -196,7 +210,8 @@ const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill
   {
     title: "Classement FFME",
     width: 20,
-    value: (s) => {
+    value: (s, e) => {
+      if (e?.classement) return e.classement;
       if (!s.ffmeClass) return undefined;
       // « (?) » : rattachement moins sûr, à vérifier sur la fiche FFME.
       const text = s.ffmeUnsure ? `${s.ffmeClass} (?)` : s.ffmeClass;
@@ -204,10 +219,22 @@ const COLUMNS: { title: string; width: number; value: (s: Sector) => Value; fill
     },
     fill: true,
   },
-  { title: "Gestion", width: 18, value: () => undefined, fill: true },
-  { title: "Equipeurs", width: 20, value: () => undefined, fill: true },
-  { title: "Fréquentation guides", width: 21, value: () => undefined, fill: true, list: LEVELS },
-  { title: "Intérêt pour DE", width: 16, value: () => undefined, fill: true, list: LEVELS },
+  { title: "Gestion", width: 18, value: (_, e) => e?.gestion ?? undefined, fill: true },
+  { title: "Equipeurs", width: 20, value: (_, e) => e?.equipeurs ?? undefined, fill: true },
+  {
+    title: "Fréquentation guides",
+    width: 21,
+    value: (_, e) => e?.frequentation ?? undefined,
+    fill: true,
+    list: LEVELS,
+  },
+  { title: "Intérêt pour DE", width: 16, value: (_, e) => e?.interet ?? undefined, fill: true, list: LEVELS },
+  {
+    title: "Saisi par",
+    width: 22,
+    value: (_, e) =>
+      e ? `${e.updatedBy} (${new Date(e.updatedAt).toLocaleDateString("fr-FR")})` : undefined,
+  },
 ];
 
 const SITE_SHEET = {
@@ -221,7 +248,11 @@ const SITE_SHEET = {
  * Classeur des sites `rows` (dans leur ordre), répartis par grande région.
  * `reference` : jeu complet, pour rattacher les sites sans massif au plus proche.
  */
-export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Array {
+export function sectorsToWorkbook(
+  rows: Sector[],
+  reference: Sector[],
+  entries: Map<number, Entry> = new Map(),
+): Uint8Array {
   const regionOf = assignRegions(rows, reference);
   const groups = new Map<Region, Sector[]>(REGIONS.map((r) => [r, []]));
   let outside = 0;
@@ -263,7 +294,7 @@ export function sectorsToWorkbook(rows: Sector[], reference: Sector[]): Uint8Arr
     ...used.map(([r, list]) => ({
       name: r.name,
       ...SITE_SHEET,
-      rows: list.map((s) => COLUMNS.map((c) => c.value(s))),
+      rows: list.map((s) => COLUMNS.map((c) => c.value(s, entries.get(s.id)))),
     })),
   ]);
 }

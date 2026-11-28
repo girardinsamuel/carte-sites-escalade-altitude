@@ -12,6 +12,10 @@ const ALL_KINDS: SiteKind[] = ["climbing", "rock", "via_ferrata", "mountain"];
 
 type Progress = { loaded: number; total: number } | null;
 
+/** Adresse de la vue Saisie (lien partageable). */
+const EDIT_PATH = "/saisie";
+const isEditPath = () => window.location.pathname.replace(/\/+$/, "") === EDIT_PATH;
+
 function deriveMax(sectors: Sector[]): number {
   if (!sectors.length) return 5000;
   const max = Math.max(...sectors.map((s) => s.elevation));
@@ -24,7 +28,18 @@ export default function App() {
   const [maxAltitude, setMaxAltitude] = useState(1500);
   const [mode, setMode] = useState<DisplayMode>("below");
   const [flyTo, setFlyTo] = useState<Place | null>(null);
-  const [view, setView] = useState<ViewMode>("map");
+  const [view, setViewState] = useState<ViewMode>(() => (isEditPath() ? "edit" : "map"));
+  // L'URL suit la vue Saisie : /saisie s'ouvre directement et se partage.
+  const setView = useCallback((v: ViewMode) => {
+    setViewState(v);
+    const path = v === "edit" ? EDIT_PATH : "/";
+    if (window.location.pathname !== path) window.history.pushState(null, "", path);
+  }, []);
+  useEffect(() => {
+    const onPop = () => setViewState((v) => (isEditPath() ? "edit" : v === "edit" ? "map" : v));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const [mapBounds, setMapBounds] = useState<Bounds | null>(null);
   const [focus, setFocus] = useState<{ sector: Sector } | null>(null);
   const [franceOnly, setFranceOnly] = useState(true);
@@ -131,7 +146,7 @@ export default function App() {
   }, []);
 
   const selectCity = useCallback((place: Place) => {
-    setView((v) => (v === "list" ? "split" : v));
+    setViewState((v) => (v === "list" ? "split" : v));
     setFlyTo(place);
   }, []);
 

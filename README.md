@@ -61,6 +61,11 @@ Grand-Ouest - Nord »), sinon « Reste de l'Europe ». L'outre-mer a son propre
 onglet ; les autres sites hors d'Europe ne sont pas exportés (leur nombre figure
 dans la synthèse).
 
+Les **saisies partagées** de la vue Saisie sont intégrées à l'export : elles
+remplacent les valeurs d'origine (nombre de voies, niveau, classement) et
+remplissent Gestion, Equipeurs, Fréquentation guides et Intérêt pour DE ; une
+colonne « Saisi par » indique le prénom et la date de la dernière modification.
+
 Colonnes des onglets : Nom du site (lien vers la fiche camptocamp), Commune,
 Altitude, Nb de voies, Niveau, Type, Massif, Département, puis les colonnes à
 remplir à la main (en-têtes jaunes) : Classement FFME (pré-rempli quand le
@@ -71,7 +76,8 @@ déroulante Nulle / Faible / Moyen / Fort) ; camptocamp ne fournit pas ces infor
 
 ## Saisie collaborative
 
-Vue **Saisie** (bouton à côté de Carte / Liste), limitée aux sites situés
+Vue **Saisie** (bouton à côté de Carte / Liste, ou directement à l'adresse
+**`/saisie`**, lien à partager), limitée aux sites situés
 **au-dessus de 1 500 m** (`MIN_ALTITUDE` dans `src/ui/EditTable.tsx`) : un tableau par grande région,
 comme le tableur, avec les colonnes Nom, Massif, Altitude, Nb voies,
 Difficultés, Classement, Gestion, Équipeurs, Fréquentation guides, Intérêt pour

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DisplayMode, Sector, SiteKind } from "../data/types";
 import { GLOBAL_RATINGS, KIND_SHORT } from "../data/labels";
 import { downloadBlob, downloadCsv } from "../data/csv";
+import type { Entry } from "../data/entries";
 import { markerColor } from "../map/altitudeColor";
 import { KindGlyph } from "./KindGlyph";
 
@@ -219,9 +220,22 @@ export function SectorList({
   const exportXlsx = async () => {
     setExporting(true);
     try {
-      const { sectorsToWorkbook } = await import("../data/xlsx");
+      const [{ sectorsToWorkbook }, { fetchEntries }] = await Promise.all([
+        import("../data/xlsx"),
+        import("../data/entries"),
+      ]);
+      // Saisies partagées (vue Saisie) ; export sans elles si l'API est injoignable.
+      let entries = new Map<number, Entry>();
+      try {
+        entries = new Map((await fetchEntries()).map((e) => [e.siteId, e]));
+      } catch (e) {
+        window.alert(
+          `Saisies partagées indisponibles (${e instanceof Error ? e.message : e}) : ` +
+            "le tableur est exporté sans elles.",
+        );
+      }
       const date = new Date().toISOString().slice(0, 10);
-      const blob = new Blob([sectorsToWorkbook(rows, allSectors) as Uint8Array<ArrayBuffer>], {
+      const blob = new Blob([sectorsToWorkbook(rows, allSectors, entries) as Uint8Array<ArrayBuffer>], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       downloadBlob(blob, `sites-escalade-par-massif-${date}.xlsx`);
