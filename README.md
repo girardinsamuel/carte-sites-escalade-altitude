@@ -86,7 +86,10 @@ DE et Prénom (auteur de la dernière modification).
   restreint les résultats à cette région.
 - Gros boutons pour appliquer Gestion, Équipeurs, Fréquentation guides ou
   Intérêt pour DE aux sites cochés, ou à défaut à tous les résultats affichés.
-- Le prénom est demandé à la première ouverture (mémorisé dans le navigateur).
+- À la première ouverture, une fenêtre explique l'outil (onglets par massif,
+  recherche / rayon, édition ligne par ligne ou par lot, sauvegarde
+  automatique), puis le prénom est demandé (mémorisé dans le navigateur).
+  Le bouton « ? » rouvre ces explications.
 
 Les saisies sont **partagées** : elles sont stockées dans une base Postgres
 (Neon, reliée au projet Vercel) via la fonction serveur `api/entries.js`, qui

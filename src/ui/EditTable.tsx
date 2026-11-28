@@ -77,6 +77,59 @@ function baseValue(s: Sector, f: EntryField): string {
 
 // ---------------------------------------------------------------------------
 
+/** Explications affichées avant la première saisie (et via le bouton « ? »). */
+function IntroDialog({ onContinue, firstTime }: { onContinue: () => void; firstTime: boolean }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div
+        role="dialog"
+        aria-labelledby="intro-title"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl bg-slate-900 p-5 text-sm leading-relaxed text-white/85 shadow-2xl ring-1 ring-white/10"
+      >
+        <h2 id="intro-title" className="text-base font-semibold text-white">
+          Saisie collaborative
+        </h2>
+        <p className="mt-3">
+          Cet outil vous permet de renseigner, pour chaque site ou secteur : l'intérêt pour les
+          guides, l'intérêt pour les moniteur·ices d'escalade, le mode de gestion et les équipeurs.
+        </p>
+        <p className="mt-3">
+          Les sites sont répartis <strong className="text-white">par massifs</strong> dans les
+          onglets. Ils ne sont pas répartis par vallées : le découpage serait trop complexe. Pour
+          trouver les sites qui vous concernent, utilisez plutôt{" "}
+          <strong className="text-white">la barre de recherche</strong>, ou{" "}
+          <strong className="text-white">le rayon</strong> autour de votre position ou d'une ville.
+        </p>
+        <p className="mt-3">Vous pouvez ensuite :</p>
+        <ul className="mt-1 list-disc space-y-1 pl-5">
+          <li>
+            <strong className="text-white">éditer ligne par ligne</strong> (gestion, équipeurs,
+            fréquentation, intérêt) directement dans les cellules de la ligne ;
+          </li>
+          <li>
+            <strong className="text-white">éditer par lot</strong> : après une recherche, appliquez
+            une valeur à tous les résultats affichés (ou aux lignes cochées) avec les boutons en
+            haut de la liste.
+          </li>
+        </ul>
+        <p className="mt-3">
+          Tout est sauvegardé automatiquement, avec le prénom de la personne qui a fait la
+          modification. Si vous vous connectez depuis un autre appareil, votre prénom vous sera
+          redemandé.
+        </p>
+        <button
+          type="button"
+          autoFocus
+          onClick={onContinue}
+          className="mt-5 h-11 w-full rounded-lg bg-sky-500 text-sm font-semibold text-white transition hover:bg-sky-400"
+        >
+          {firstTime ? "Continuer" : "Fermer"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AuthorDialog({ initial, onSave }: { initial: string; onSave: (name: string) => void }) {
   const [name, setName] = useState(initial);
   return (
@@ -341,7 +394,9 @@ interface Props {
 
 export function EditTable({ sectors, allSectors, onClose }: Props) {
   const [author, setAuthor] = useState(readAuthor);
-  const [askAuthor, setAskAuthor] = useState(() => !readAuthor());
+  const [askAuthor, setAskAuthor] = useState(false);
+  // Première ouverture sur cet appareil : explications, puis prénom.
+  const [showIntro, setShowIntro] = useState(() => !readAuthor());
   const [entries, setEntries] = useState<Map<number, Entry>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState<{ kind: "ok" | "error" | "saving"; text: string } | null>(null);
@@ -560,7 +615,16 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-950 text-white">
-      {askAuthor && (
+      {showIntro && (
+        <IntroDialog
+          firstTime={!author}
+          onContinue={() => {
+            setShowIntro(false);
+            if (!author) setAskAuthor(true);
+          }}
+        />
+      )}
+      {askAuthor && !showIntro && (
         <AuthorDialog
           initial={author}
           onSave={(n) => {
@@ -592,6 +656,15 @@ export function EditTable({ sectors, allSectors, onClose }: Props) {
           aria-label="Rechercher dans tous les onglets"
           className="h-9 min-w-[12rem] flex-1 rounded-lg border border-white/15 bg-white/5 px-3 text-sm placeholder:text-white/35 focus:border-sky-400 focus:outline-none"
         />
+        <button
+          type="button"
+          onClick={() => setShowIntro(true)}
+          title="Comment ça marche ?"
+          aria-label="Aide"
+          className="h-9 w-9 rounded-lg bg-white/5 text-sm font-semibold text-white/70 hover:bg-white/10"
+        >
+          ?
+        </button>
         <button
           type="button"
           onClick={() => setAskAuthor(true)}
