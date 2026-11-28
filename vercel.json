@@ -1,0 +1,3 @@
+{
+  "rewrites": [{ "source": "/saisie", "destination": "/index.html" }]
+}
